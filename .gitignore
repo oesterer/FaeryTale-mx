@@ -1,8 +1,6 @@
 resume.sh
 
 # Build artifacts
-.mx/
-faerytale
 *.dSYM
 *.o
 
