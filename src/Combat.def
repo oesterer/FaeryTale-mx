@@ -3,6 +3,8 @@ DEFINITION MODULE Combat;
 (* Combat system matching original FTA.
    Melee and ranged attack resolution. *)
 
+VAR wardTimer: INTEGER;
+
 PROCEDURE UpdateCombat;
 PROCEDURE DoHit(attacker, defender: INTEGER);
 

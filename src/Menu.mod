@@ -5,7 +5,9 @@ FROM Items IMPORT InventoryCount,
                   ItemGold, ItemFood, ItemKey, ItemSword,
                   ItemShield, ItemPotion, ItemGem, ItemScroll;
 FROM Brothers IMPORT brothers, activeBrother, HasStuff, HasWeapon,
-                     StHealScroll, StKillScroll, StHomeScroll;
+                     StWardScroll, StFreezeScroll, StFireScroll, StFearScroll,
+                     StLightScroll, StSanctuaryScroll, StHarvestScroll,
+                     StHealScroll;
 
 (* Category tab labels — always shown as top 5 in each menu *)
 CONST
@@ -24,8 +26,8 @@ CONST
   LabGive  = "Gold Book Writ Bone ";
   LabFile  = "  A    B    C    D    E    F    G    H  ";
   LabSell  = "AppleGrey ";
-  LabSpells = "Heal Kill Home ";
-  LabStudy = "Heal Kill Home ";
+  LabSpells = "Ward FreezFire Fear LightSanctHarvsHeal ";
+  LabStudy = "Ward FreezFire Fear LightSanctHarvsHeal ";
   LabHerbs = "MandrWolfsMugwtYarroNightBlood";
   LabTrade = "Buy  Sell Give ";
   LabDo    = "Camp Eat  ";
@@ -65,8 +67,8 @@ BEGIN
   InitMenuDef(menus[MUse],   LabUse,   14, 8);
   InitMenuDef(menus[MFile],  LabFile,  13, 5);
   InitMenuDef(menus[MSell],  LabSell,   7, 10);
-  InitMenuDef(menus[MSpells], LabSpells, 8, 5);
-  InitMenuDef(menus[MStudy],  LabStudy,  8, 5);
+  InitMenuDef(menus[MSpells], LabSpells, 13, 5);
+  InitMenuDef(menus[MStudy],  LabStudy,  13, 5);
   InitMenuDef(menus[MHerbs],  LabHerbs, 11, 6);
   InitMenuDef(menus[MTrade],  LabTrade,  8, 10);
   InitMenuDef(menus[MDo],     LabDo,     7, 6);
@@ -156,14 +158,10 @@ BEGIN
   SetEnabled(menus[MSell], 6, 8);
 
   (* Spells: entries are shown once their scroll has been collected. *)
-  SetEnabled(menus[MSpells], 5, 0);
-  SetEnabled(menus[MSpells], 6, 0);
-  SetEnabled(menus[MSpells], 7, 0);
+  FOR i := 5 TO 12 DO SetEnabled(menus[MSpells], i, 0) END;
 
   (* Study: entries are shown once their scroll has been collected. *)
-  SetEnabled(menus[MStudy], 5, 0);
-  SetEnabled(menus[MStudy], 6, 0);
-  SetEnabled(menus[MStudy], 7, 0);
+  FOR i := 5 TO 12 DO SetEnabled(menus[MStudy], i, 0) END;
 
   (* Herbs: always list each magical ingredient. *)
   FOR i := 5 TO 10 DO SetEnabled(menus[MHerbs], i, 10) END;
@@ -255,19 +253,15 @@ BEGIN
   menus[MMagic].enabled[13] := 10;
   menus[MMagic].enabled[14] := 10;
 
-  IF HasStuff(StHealScroll) THEN menus[MSpells].enabled[5] := 10
-  ELSE menus[MSpells].enabled[5] := 0 END;
-  IF HasStuff(StKillScroll) THEN menus[MSpells].enabled[6] := 10
-  ELSE menus[MSpells].enabled[6] := 0 END;
-  IF HasStuff(StHomeScroll) THEN menus[MSpells].enabled[7] := 10
-  ELSE menus[MSpells].enabled[7] := 0 END;
-
-  IF HasStuff(StHealScroll) THEN menus[MStudy].enabled[5] := 10
-  ELSE menus[MStudy].enabled[5] := 0 END;
-  IF HasStuff(StKillScroll) THEN menus[MStudy].enabled[6] := 10
-  ELSE menus[MStudy].enabled[6] := 0 END;
-  IF HasStuff(StHomeScroll) THEN menus[MStudy].enabled[7] := 10
-  ELSE menus[MStudy].enabled[7] := 0 END;
+  FOR i := 0 TO 7 DO
+    IF HasStuff(StWardScroll + i) THEN
+      menus[MSpells].enabled[5 + i] := 10;
+      menus[MStudy].enabled[5 + i] := 10
+    ELSE
+      menus[MSpells].enabled[5 + i] := 0;
+      menus[MStudy].enabled[5 + i] := 0
+    END
+  END;
 
   (* KEYS: 5-10 = stuff[16-21] *)
   FOR i := 0 TO 5 DO

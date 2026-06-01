@@ -84,9 +84,14 @@ BEGIN
   AddObj(19041, 15755, 148, 1, 3);
   AddObj(19046, 15755, 148, 1, 3);
   (* Spell testing stash near the starting point. *)
-  AddObj(18972, 15712, ObjHealScroll, 1, 3);
-  AddObj(19036, 15712, ObjKillScroll, 1, 3);
-  AddObj(19100, 15712, ObjHomeScroll, 1, 3);
+  AddObj(18972, 15712, ObjWardScroll, 1, 3);
+  AddObj(18988, 15712, ObjFreezeScroll, 1, 3);
+  AddObj(19004, 15712, ObjFireScroll, 1, 3);
+  AddObj(19020, 15712, ObjFearScroll, 1, 3);
+  AddObj(19036, 15712, ObjLightScroll, 1, 3);
+  AddObj(19052, 15712, ObjSanctuaryScroll, 1, 3);
+  AddObj(19068, 15712, ObjHarvestScroll, 1, 3);
+  AddObj(19084, 15712, ObjHealScroll, 1, 3);
   AddObj(18972, 15740, ObjMandrake, 1, 3);
   AddObj(18988, 15740, ObjMandrake, 1, 3);
   AddObj(19004, 15740, ObjMandrake, 1, 3);
@@ -386,8 +391,10 @@ BEGIN
            and render from the bottom half (+8 offset, 8px tall).
            Same frame is shared — top half is one object, bottom half another. *)
         id := objects[i].objId;
-        IF (id >= ObjMandrake) AND (id <= ObjHomeScroll) THEN
+        IF (id >= ObjMandrake) AND (id <= ObjBloodroot) THEN
           sprY := (116 + id - ObjMandrake) * ObjSprH
+        ELSIF (id >= ObjWardScroll) AND (id <= ObjHealScroll) THEN
+          sprY := (122 + (id - ObjWardScroll) MOD 3) * ObjSprH
         ELSIF BAND(CARDINAL(id), 128) # 0 THEN
           sprY := INTEGER(BAND(CARDINAL(id), 127)) * ObjSprH + 8
         ELSE
@@ -401,7 +408,7 @@ BEGIN
            (id = 25) OR (id = 26) OR
            ((id > 16) AND (id < 24)) OR
            ((BAND(CARDINAL(id), 128) # 0) AND
-            ((id < ObjMandrake) OR (id > ObjHomeScroll))) THEN
+            ((id < ObjMandrake) OR (id > ObjHealScroll))) THEN
           ht := 8
         END;
         IF sprY + ht <= ObjSheetH THEN

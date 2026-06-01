@@ -13,7 +13,7 @@ FROM World IMPORT InitWorld, TileSize, WorldW, WorldH, UpdateCamera,
                   GetTerrain, TerrSwamp, TerrWater, camX, camY;
 FROM Movement IMPORT MoveActor, ProxCheck;
 FROM EnemyAI IMPORT UpdateEnemies;
-FROM Combat IMPORT UpdateCombat, SearchBody;
+FROM Combat IMPORT UpdateCombat, SearchBody, wardTimer;
 FROM Items IMPORT InitItems, CheckPickup, UseItem, InventoryCount,
                   AddToInventory, SpawnItem,
                   ItemNone, ItemGold, ItemFood, ItemPotion,
@@ -27,7 +27,9 @@ FROM Brothers IMPORT InitBrothers, SwitchToNext, ActiveName,
                      DecLuck, IncBrave, DecKind,
                      StMandrake, StWolfsbane, StMugwort, StYarrow,
                      StNightshade, StBloodroot,
-                     StHealScroll, StKillScroll, StHomeScroll, LastStuff;
+                     StWardScroll, StFreezeScroll, StFireScroll, StFearScroll,
+                     StLightScroll, StSanctuaryScroll, StHarvestScroll,
+                     StHealScroll, LastStuff;
 FROM NPC IMPORT InitNPCs, MaterializeNPCs, TalkToNPC, LookAtNPC,
                FindNearestNPC, GiveToNPC, ResetMaterialized;
 FROM Assets IMPORT InitAssets, PreloadAll, LoadHUD, currentRegion,
@@ -47,7 +49,9 @@ FROM WorldObj IMPORT CheckObjectPickup, objects, objCount, revealHidden,
                      AddObj, DistributeRegion, LeaveItem,
                      ObjMandrake, ObjWolfsbane, ObjMugwort, ObjYarrow,
                      ObjNightshade, ObjBloodroot,
-                     ObjHealScroll, ObjKillScroll, ObjHomeScroll;
+                     ObjWardScroll, ObjFreezeScroll, ObjFireScroll,
+                     ObjFearScroll, ObjLightScroll, ObjSanctuaryScroll,
+                     ObjHarvestScroll, ObjHealScroll;
 FROM HudLog IMPORT AddLogLine, SetStats, InitHudLog;
 FROM Encounter IMPORT InitEncounters, UpdateEncounters, EnemiesNearby,
                       ActorsOnScreen, MoveExtent, xtype;
@@ -82,6 +86,7 @@ VAR
   cheatSpeed: BOOLEAN;  (* 5x movement speed *)
   lightTimer: INTEGER;
   freezeTimer: INTEGER;
+  sanctuaryTimer: INTEGER;
   nameBuf: ARRAY [0..31] OF CHAR;
   msgBuf: ARRAY [0..79] OF CHAR;
 
@@ -160,6 +165,8 @@ BEGIN
   lightTimer := 0;
   secretTimer := 0;
   freezeTimer := 0;
+  wardTimer := 0;
+  sanctuaryTimer := 0;
   fairyActive := FALSE;
   fairyX := 0;
   colorPlayTimer := 0;
@@ -296,12 +303,26 @@ BEGIN
     15: Assign("a Jade Skull", name) | 16: Assign("a Gold Key", name) |
     17: Assign("a Green Key", name) | 18: Assign("a Blue Key", name) |
     19: Assign("a Red Key", name) | 20: Assign("a Grey Key", name) |
-    21: Assign("a White Key", name)
+    21: Assign("a White Key", name) |
+    StMandrake: Assign("Mandrake", name) |
+    StWolfsbane: Assign("Wolfsbane", name) |
+    StMugwort: Assign("Mugwort", name) |
+    StYarrow: Assign("Yarrow", name) |
+    StNightshade: Assign("Nightshade", name) |
+    StBloodroot: Assign("Bloodroot", name) |
+    StWardScroll: Assign("a Ward Scroll", name) |
+    StFreezeScroll: Assign("a Freeze Scroll", name) |
+    StFireScroll: Assign("a Fire Scroll", name) |
+    StFearScroll: Assign("a Fear Scroll", name) |
+    StLightScroll: Assign("a Light Scroll", name) |
+    StSanctuaryScroll: Assign("a Sanctuary Scroll", name) |
+    StHarvestScroll: Assign("a Harvest Scroll", name) |
+    StHealScroll: Assign("a Heal Scroll", name)
   ELSE Assign("a treasure", name) END
 END TreasureName;
 
 PROCEDURE SearchNearbyCorpses;
-VAR i, dx, dy, w, race, tg, ti, gv: INTEGER;
+VAR i, dx, dy, w, race, tg, ti, gv, roll: INTEGER;
     wname, tname: ARRAY [0..31] OF CHAR;
     hasWeapon, hasTreasure: BOOLEAN;
 BEGIN
@@ -327,16 +348,25 @@ BEGIN
           END
         END;
         race := actors[i].race; ti := 0;
-        IF race < 128 THEN
+        IF race = 2 THEN
+          (* Wraiths are the main magical supply source: ingredients are
+             frequent, while scrolls are deliberately rare. *)
+          roll := (cycle + actors[i].absX + actors[i].absY) MOD 20;
+          IF roll < 3 THEN
+            ti := StWardScroll + ((cycle + actors[i].absX) MOD 8)
+          ELSE
+            ti := StMandrake + ((cycle + actors[i].absY) MOD 6)
+          END
+        ELSIF race < 128 THEN
           tg := TreasureGroup(race);
           ti := tg * 8 + (cycle MOD 8);
           IF (ti >= 0) AND (ti <= 39) THEN ti := treasureProbs[ti] ELSE ti := 0 END
         END;
-        (* Wraiths always leave a collectible item after battle. *)
-        IF (race = 2) AND (ti = 0) THEN ti := 15 END;  (* Jade Skull *)
         IF ti > 0 THEN
           hasTreasure := TRUE;
-          IF ti >= 31 THEN
+          IF (race = 2) THEN
+            GiveStuff(ti); TreasureName(ti, tname)
+          ELSIF ti >= 31 THEN
             gv := GoldValue(ti); AddWealth(gv);
             IntToStr(gv, tname); Concat(tname, " Gold Pieces", tname)
           ELSE GiveStuff(ti); TreasureName(ti, tname) END
@@ -679,83 +709,187 @@ BEGIN
   GoMenu(0)
 END HandleMagic;
 
+PROCEDURE DamageNearbyEnemies(amount, radius: INTEGER);
+VAR i, dx, dy: INTEGER;
+BEGIN
+  FOR i := 1 TO actorCount - 1 DO
+    dx := actors[i].absX - actors[0].absX;
+    dy := actors[i].absY - actors[0].absY;
+    IF dx < 0 THEN dx := -dx END;
+    IF dy < 0 THEN dy := -dy END;
+    IF (actors[i].actorType = TypeEnemy) AND (actors[i].vitality > 0) AND
+       (dx < radius) AND (dy < radius) THEN
+      DEC(actors[i].vitality, amount);
+      IF actors[i].vitality <= 0 THEN
+        actors[i].vitality := 0;
+        actors[i].state := StDying;
+        actors[i].tactic := 7
+      END
+    END
+  END
+END DamageNearbyEnemies;
+
+PROCEDURE FrightenNearbyEnemies(radius: INTEGER);
+VAR i, dx, dy: INTEGER;
+BEGIN
+  FOR i := 1 TO actorCount - 1 DO
+    dx := actors[i].absX - actors[0].absX;
+    dy := actors[i].absY - actors[0].absY;
+    IF dx < 0 THEN dx := -dx END;
+    IF dy < 0 THEN dy := -dy END;
+    IF (actors[i].actorType = TypeEnemy) AND (actors[i].vitality > 0) AND
+       (actors[i].race < 7) AND (dx < radius) AND (dy < radius) THEN
+      actors[i].goal := GoalFlee
+    END
+  END
+END FrightenNearbyEnemies;
+
+PROCEDURE HarvestNearby;
+VAR i, id, dx, dy, count: INTEGER;
+    picked: BOOLEAN;
+BEGIN
+  count := 0;
+  FOR i := 0 TO objCount - 1 DO
+    IF ((objects[i].status = 1) OR (objects[i].status = 5)) AND
+       ((objects[i].region = currentRegion) OR (objects[i].region = -1)) THEN
+      dx := objects[i].x - actors[0].absX;
+      dy := objects[i].y - actors[0].absY;
+      IF dx < 0 THEN dx := -dx END;
+      IF dy < 0 THEN dy := -dy END;
+      IF (dx < 100) AND (dy < 100) THEN
+        id := objects[i].objId; picked := TRUE;
+        CASE id OF
+          13: AddWealth(50) |
+          14, 15, 16: ContainerLoot |
+          17: GiveStuff(14) | 18: GiveStuff(9) | 19: GiveStuff(10) |
+          22: GiveStuff(11) | 23: GiveStuff(13) | 24: GiveStuff(15) |
+          25: GiveStuff(16) | 26: GiveStuff(20) |
+          11: AddStuffN(8, 10) |
+           8: GiveStuff(2) | 9: GiveStuff(1) | 10: GiveStuff(3) |
+          12: GiveStuff(0) | 114: GiveStuff(18) | 145: GiveStuff(4) |
+         148: GiveStuff(24) | 149: GiveStuff(25) | 151: GiveStuff(6) |
+         153: GiveStuff(17) | 154: GiveStuff(21) | 242: GiveStuff(19) |
+          27: SetStuff(5, 1) | 138: SetStuff(29, 1) |
+         139: SetStuff(22, 1) | 140: SetStuff(30, 1) | 155: SetStuff(7, 1) |
+         ObjMandrake: GiveStuff(StMandrake) |
+         ObjWolfsbane: GiveStuff(StWolfsbane) |
+         ObjMugwort: GiveStuff(StMugwort) |
+         ObjYarrow: GiveStuff(StYarrow) |
+         ObjNightshade: GiveStuff(StNightshade) |
+         ObjBloodroot: GiveStuff(StBloodroot) |
+         ObjWardScroll: GiveStuff(StWardScroll) |
+         ObjFreezeScroll: GiveStuff(StFreezeScroll) |
+         ObjFireScroll: GiveStuff(StFireScroll) |
+         ObjFearScroll: GiveStuff(StFearScroll) |
+         ObjLightScroll: GiveStuff(StLightScroll) |
+         ObjSanctuaryScroll: GiveStuff(StSanctuaryScroll) |
+         ObjHarvestScroll: GiveStuff(StHarvestScroll) |
+         ObjHealScroll: GiveStuff(StHealScroll)
+        ELSE
+          picked := FALSE
+        END;
+        IF picked THEN objects[i].status := 2; INC(count) END
+      END
+    END
+  END;
+  IntToStr(count, nameBuf);
+  Assign("Harvest gathered ", msgBuf);
+  Concat(msgBuf, nameBuf, msgBuf);
+  Concat(msgBuf, " nearby items.", msgBuf);
+  ShowMessage(msgBuf)
+END HarvestNearby;
+
 PROCEDURE HandleSpell(optIdx: INTEGER);
 BEGIN
-  CASE optIdx OF
-    5: (* Heal Scroll *)
-      IF NOT HasStuff(StHealScroll) THEN
-        ShowMessage("You do not have the Heal scroll.")
-      ELSIF brothers[activeBrother].stuff[StMandrake] < 1 THEN
-        ShowMessage("Heal requires one Mandrake.")
-      ELSE
-        DEC(brothers[activeBrother].stuff[StMandrake]);
-        INC(actors[0].vitality, 20);
-        ShowMessage("The Heal spell restores 20 health.")
-      END |
-    6: (* Kill Scroll *)
-      IF NOT HasStuff(StKillScroll) THEN
-        ShowMessage("You do not have the Kill scroll.")
-      ELSIF brothers[activeBrother].stuff[StBloodroot] < 2 THEN
-        ShowMessage("Kill requires two Bloodroot.")
-      ELSE
-        DEC(brothers[activeBrother].stuff[StBloodroot], 2);
-        KillWeakEnemies
-      END |
-    7: (* Home Scroll *)
-      IF NOT HasStuff(StHomeScroll) THEN
-        ShowMessage("You do not have the Home scroll.")
-      ELSIF brothers[activeBrother].stuff[StYarrow] < 2 THEN
-        ShowMessage("Home requires two Yarrow.")
-      ELSE
-        DEC(brothers[activeBrother].stuff[StYarrow], 2);
-        actors[0].absX := 19036;
-        actors[0].absY := 15755;
-        actors[0].state := StStill;
-        actorCount := 1;
-        battleFlag := FALSE;
-        prevBattle := FALSE;
-        aftermathDone := FALSE;
-        ResetMaterialized;
-        SwitchRegion(3);
-        InitPlace(actors[0].absX, actors[0].absY, 3);
-        ShowMessage("The Home spell returns you to the beginning.")
-      END
-  ELSE
-    GoMenu(0); RETURN
+  IF (optIdx < 5) OR (optIdx > 12) THEN GoMenu(0); RETURN END;
+  IF NOT HasStuff(StWardScroll + optIdx - 5) THEN
+    ShowMessage("You do not have that spell scroll."); GoMenu(0); RETURN
   END;
-  SetOptions;
-  GoMenu(0)
+  CASE optIdx OF
+    5: IF (brothers[activeBrother].stuff[StWolfsbane] < 1) OR
+          (brothers[activeBrother].stuff[StYarrow] < 1) THEN
+         ShowMessage("Ward requires Wolfsbane and Yarrow.")
+       ELSE DEC(brothers[activeBrother].stuff[StWolfsbane]);
+         DEC(brothers[activeBrother].stuff[StYarrow]); INC(wardTimer, 600);
+         ShowMessage("A protective ward surrounds you.") END |
+    6: IF (brothers[activeBrother].stuff[StWolfsbane] < 2) OR
+          (brothers[activeBrother].stuff[StMugwort] < 1) THEN
+         ShowMessage("Freeze requires 2 Wolfsbane and Mugwort.")
+       ELSE DEC(brothers[activeBrother].stuff[StWolfsbane], 2);
+         DEC(brothers[activeBrother].stuff[StMugwort]); INC(freezeTimer, 250);
+         ShowMessage("The enemies are frozen in time.") END |
+    7: IF (brothers[activeBrother].stuff[StBloodroot] < 1) OR
+          (brothers[activeBrother].stuff[StNightshade] < 1) THEN
+         ShowMessage("Fire requires Bloodroot and Nightshade.")
+       ELSE DEC(brothers[activeBrother].stuff[StBloodroot]);
+         DEC(brothers[activeBrother].stuff[StNightshade]);
+         DamageNearbyEnemies(12, 120); ShowMessage("Fire strikes nearby enemies.") END |
+    8: IF (brothers[activeBrother].stuff[StNightshade] < 1) OR
+          (brothers[activeBrother].stuff[StBloodroot] < 1) THEN
+         ShowMessage("Fear requires Nightshade and Bloodroot.")
+       ELSE DEC(brothers[activeBrother].stuff[StNightshade]);
+         DEC(brothers[activeBrother].stuff[StBloodroot]);
+         FrightenNearbyEnemies(160); ShowMessage("Weaker enemies flee in fear.") END |
+    9: IF brothers[activeBrother].stuff[StYarrow] < 1 THEN
+         ShowMessage("Light requires Yarrow.")
+       ELSE DEC(brothers[activeBrother].stuff[StYarrow]); INC(lightTimer, 760);
+         ShowMessage("Everything is bathed in light.") END |
+   10: IF (brothers[activeBrother].stuff[StWolfsbane] < 2) OR
+          (brothers[activeBrother].stuff[StYarrow] < 2) THEN
+         ShowMessage("Sanctuary requires 2 Wolfsbane and 2 Yarrow.")
+       ELSE DEC(brothers[activeBrother].stuff[StWolfsbane], 2);
+         DEC(brothers[activeBrother].stuff[StYarrow], 2); INC(sanctuaryTimer, 900);
+         ShowMessage("Sanctuary prevents new enemy encounters.") END |
+   11: IF (brothers[activeBrother].stuff[StMandrake] < 1) OR
+          (brothers[activeBrother].stuff[StMugwort] < 1) THEN
+         ShowMessage("Harvest requires Mandrake and Mugwort.")
+       ELSE DEC(brothers[activeBrother].stuff[StMandrake]);
+         DEC(brothers[activeBrother].stuff[StMugwort]); HarvestNearby END |
+   12: IF (brothers[activeBrother].stuff[StWolfsbane] < 1) OR
+          (brothers[activeBrother].stuff[StMandrake] < 1) THEN
+         ShowMessage("Heal requires Wolfsbane and Mandrake.")
+       ELSE DEC(brothers[activeBrother].stuff[StWolfsbane]);
+         DEC(brothers[activeBrother].stuff[StMandrake]);
+         INC(actors[0].vitality, 15); ShowMessage("Heal restores 15 health.") END
+  ELSE GoMenu(0); RETURN
+  END;
+  SetOptions; GoMenu(0)
 END HandleSpell;
 
 PROCEDURE HandleStudy(optIdx: INTEGER);
 BEGIN
   CASE optIdx OF
-    5: ShowMessage("Heal: 1 Mandrake. Restores 20 health.") |
-    6: ShowMessage("Kill: 2 Bloodroot. Kills weaker enemies.") |
-    7: ShowMessage("Home: 2 Yarrow. Returns you to the starting point.")
-  ELSE
-  END
+     5: ShowMessage("Ward: Wolfsbane + Yarrow. Reduces incoming damage.") |
+     6: ShowMessage("Freeze: 2 Wolfsbane + Mugwort. Briefly stops enemies.") |
+     7: ShowMessage("Fire: Bloodroot + Nightshade. Damages nearby enemies.") |
+     8: ShowMessage("Fear: Nightshade + Bloodroot. Makes weaker enemies flee.") |
+     9: ShowMessage("Light: Yarrow. Illuminates dark areas.") |
+    10: ShowMessage("Sanctuary: 2 Wolfsbane + 2 Yarrow. Prevents new spawns.") |
+    11: ShowMessage("Harvest: Mandrake + Mugwort. Takes nearby collectibles.") |
+    12: ShowMessage("Heal: Wolfsbane + Mandrake. Restores 15 health.")
+  ELSE END
 END HandleStudy;
 
-PROCEDURE ShowHerbCount(name: ARRAY OF CHAR; stuffIdx: INTEGER);
+PROCEDURE ShowHerbCount(name, properties: ARRAY OF CHAR; stuffIdx: INTEGER);
 VAR numStr: ARRAY [0..15] OF CHAR;
 BEGIN
   Assign(name, msgBuf);
   Concat(msgBuf, ": ", msgBuf);
   IntToStr(brothers[activeBrother].stuff[stuffIdx], numStr);
-  Concat(msgBuf, numStr, msgBuf);
+  Concat(msgBuf, numStr, msgBuf); Concat(msgBuf, ". ", msgBuf);
+  Concat(msgBuf, properties, msgBuf);
   ShowMessage(msgBuf)
 END ShowHerbCount;
 
 PROCEDURE HandleHerbs(optIdx: INTEGER);
 BEGIN
   CASE optIdx OF
-     5: ShowHerbCount("Mandrake", StMandrake) |
-     6: ShowHerbCount("Wolfsbane", StWolfsbane) |
-     7: ShowHerbCount("Mugwort", StMugwort) |
-     8: ShowHerbCount("Yarrow", StYarrow) |
-     9: ShowHerbCount("Nightshade", StNightshade) |
-    10: ShowHerbCount("Bloodroot", StBloodroot)
+     5: ShowHerbCount("Mandrake", "Healing, growth, vitality.", StMandrake) |
+     6: ShowHerbCount("Wolfsbane", "Protection, suppression.", StWolfsbane) |
+     7: ShowHerbCount("Mugwort", "Perception, dreams, movement.", StMugwort) |
+     8: ShowHerbCount("Yarrow", "Light, safety, navigation.", StYarrow) |
+     9: ShowHerbCount("Nightshade", "Poison, fear, curses.", StNightshade) |
+    10: ShowHerbCount("Bloodroot", "Direct damage, aggressive magic.", StBloodroot)
   ELSE
   END
 END HandleHerbs;
@@ -884,10 +1018,12 @@ BEGIN
         IF saveMode THEN
           SaveBrotherState;
           IF SaveGame(optIdx - 5, dayNight, fatigue, hunger, cycle,
-                      lightTimer, secretTimer, freezeTimer) THEN END
+                      lightTimer, secretTimer, freezeTimer, wardTimer,
+                      sanctuaryTimer) THEN END
         ELSE
           IF LoadGame(optIdx - 5, dayNight, fatigue, hunger, cycle,
-                      lightTimer, secretTimer, freezeTimer) THEN
+                      lightTimer, secretTimer, freezeTimer, wardTimer,
+                      sanctuaryTimer) THEN
             dayPeriod := dayNight DIV 2000;
             viewStatus := ViewNormal;
             battleFlag := FALSE;
@@ -951,9 +1087,14 @@ BEGIN
      ObjYarrow: ShowMessage("Found Yarrow!"); GiveStuff(StYarrow) |
      ObjNightshade: ShowMessage("Found Nightshade!"); GiveStuff(StNightshade) |
      ObjBloodroot: ShowMessage("Found Bloodroot!"); GiveStuff(StBloodroot) |
+     ObjWardScroll: ShowMessage("Found the Ward scroll!"); GiveStuff(StWardScroll) |
+     ObjFreezeScroll: ShowMessage("Found the Freeze scroll!"); GiveStuff(StFreezeScroll) |
+     ObjFireScroll: ShowMessage("Found the Fire scroll!"); GiveStuff(StFireScroll) |
+     ObjFearScroll: ShowMessage("Found the Fear scroll!"); GiveStuff(StFearScroll) |
+     ObjLightScroll: ShowMessage("Found the Light scroll!"); GiveStuff(StLightScroll) |
+     ObjSanctuaryScroll: ShowMessage("Found the Sanctuary scroll!"); GiveStuff(StSanctuaryScroll) |
+     ObjHarvestScroll: ShowMessage("Found the Harvest scroll!"); GiveStuff(StHarvestScroll) |
      ObjHealScroll: ShowMessage("Found the Heal scroll!"); GiveStuff(StHealScroll) |
-     ObjKillScroll: ShowMessage("Found the Kill scroll!"); GiveStuff(StKillScroll) |
-     ObjHomeScroll: ShowMessage("Found the Home scroll!"); GiveStuff(StHomeScroll) |
      242: ShowMessage("Found a red key!"); GiveStuff(19) |
       27: ShowMessage("% found the Golden Lasso!"); SetStuff(5, 1) |
      138: ShowMessage("% found the King's Bone!"); SetStuff(29, 1) |
@@ -1082,6 +1223,7 @@ BEGIN
             witchRng := witchRng * 1103515245 + 12345;
             IF witchRng < 0 THEN witchRng := -witchRng END;
             rng := (witchRng DIV 65536) MOD 2 + 1;
+            IF wardTimer > 0 THEN rng := (rng + 1) DIV 2 END;
             DEC(actors[0].vitality, rng);
             IF actors[0].vitality <= 0 THEN
               actors[0].vitality := 0;
@@ -1372,6 +1514,7 @@ BEGIN
         dayNight := 8000;
         dayPeriod := 4;  (* sync period so morning announcement doesn't fire *)
         lightTimer := 0; secretTimer := 0; freezeTimer := 0;
+        wardTimer := 0; sanctuaryTimer := 0;
         actorCount := 1;  (* clear enemies *)
         deathTimer := 0;
         ShowMessage("The good fairy has revived you!")
@@ -1396,6 +1539,7 @@ BEGIN
           dayNight := 8000;
           dayPeriod := 4;
           lightTimer := 0; secretTimer := 0; freezeTimer := 0;
+          wardTimer := 0; sanctuaryTimer := 0;
           RestoreDoorTiles;
           SwitchRegion(3);
           InitPlace(actors[0].absX, actors[0].absY, 3);
@@ -1631,7 +1775,9 @@ BEGIN
     UpdateEnemies;
     IF (actors[0].state # StDead) AND (actors[0].state # StDying) THEN
       UpdateCombat;
-      UpdateEncounters(actors[0].absX, actors[0].absY, currentRegion)
+      IF sanctuaryTimer = 0 THEN
+        UpdateEncounters(actors[0].absX, actors[0].absY, currentRegion)
+      END
     END;
     UpdateMissiles
   END;
@@ -1733,6 +1879,8 @@ BEGIN
   IF lightTimer > 0 THEN DEC(lightTimer) END;
   IF secretTimer > 0 THEN DEC(secretTimer) END;
   IF freezeTimer > 0 THEN DEC(freezeTimer) END;
+  IF wardTimer > 0 THEN DEC(wardTimer) END;
+  IF sanctuaryTimer > 0 THEN DEC(sanctuaryTimer) END;
   revealHidden := (secretTimer > 0);
 
   IF msgTimer > 0 THEN DEC(msgTimer) END;

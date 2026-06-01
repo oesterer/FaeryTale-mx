@@ -25,10 +25,15 @@ CONST
   StYarrow = 34;
   StNightshade = 35;
   StBloodroot = 36;
-  StHealScroll = 37;
-  StKillScroll = 38;
-  StHomeScroll = 39;
-  LastStuff = 39;
+  StWardScroll = 37;
+  StFreezeScroll = 38;
+  StFireScroll = 39;
+  StFearScroll = 40;
+  StLightScroll = 41;
+  StSanctuaryScroll = 42;
+  StHarvestScroll = 43;
+  StHealScroll = 44;
+  LastStuff = 44;
 
 TYPE
   BrotherData = RECORD

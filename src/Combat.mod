@@ -45,6 +45,9 @@ BEGIN
   IF wt >= 8 THEN wt := 5 END;  (* cap touch attacks *)
   damage := wt + Rand(2);  (* 0 or 1 random bonus *)
   IF damage < 1 THEN damage := 1 END;
+  IF (defender = 0) AND (wardTimer > 0) THEN
+    damage := (damage + 1) DIV 2
+  END;
 
   DEC(actors[defender].vitality, damage);
 
@@ -174,6 +177,7 @@ BEGIN
 END UpdateCombat;
 
 BEGIN
+  wardTimer := 0;
   rng := 77777;
   FOR rng := 0 TO 47 DO hitCooldown[rng] := 0 END;
   rng := 77777

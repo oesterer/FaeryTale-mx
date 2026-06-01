@@ -45,9 +45,14 @@ CONST
   ObjYarrow = 159;
   ObjNightshade = 160;
   ObjBloodroot = 161;
-  ObjHealScroll = 162;
-  ObjKillScroll = 163;
-  ObjHomeScroll = 164;
+  ObjWardScroll = 162;
+  ObjFreezeScroll = 163;
+  ObjFireScroll = 164;
+  ObjFearScroll = 165;
+  ObjLightScroll = 166;
+  ObjSanctuaryScroll = 167;
+  ObjHarvestScroll = 168;
+  ObjHealScroll = 169;
   ObjRedKey   = 242;
 
 TYPE

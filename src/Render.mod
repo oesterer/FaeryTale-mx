@@ -1619,9 +1619,14 @@ BEGIN
   DrawInvSlot(119,220, 80,  3, 0,16,  4, stuff[34]);  (* Yarrow *)
   DrawInvSlot(120,245, 80,  3, 0,16,  4, stuff[35]);  (* Nightshade *)
   DrawInvSlot(121,270, 80,  3, 0,16,  4, stuff[36]);  (* Bloodroot *)
-  DrawInvSlot(122,170,110,  3, 0,16,  1, stuff[37]);  (* Heal Scroll *)
-  DrawInvSlot(123,210,110,  3, 0,16,  1, stuff[38]);  (* Kill Scroll *)
-  DrawInvSlot(124,250,110,  3, 0,16,  1, stuff[39])   (* Home Scroll *)
+  DrawInvSlot(122,120,110,  3, 0,16,  1, stuff[37]);  (* Ward Scroll *)
+  DrawInvSlot(123,140,110,  3, 0,16,  1, stuff[38]);  (* Freeze Scroll *)
+  DrawInvSlot(124,160,110,  3, 0,16,  1, stuff[39]);  (* Fire Scroll *)
+  DrawInvSlot(122,180,110,  3, 0,16,  1, stuff[40]);  (* Fear Scroll *)
+  DrawInvSlot(123,200,110,  3, 0,16,  1, stuff[41]);  (* Light Scroll *)
+  DrawInvSlot(124,220,110,  3, 0,16,  1, stuff[42]);  (* Sanctuary Scroll *)
+  DrawInvSlot(122,240,110,  3, 0,16,  1, stuff[43]);  (* Harvest Scroll *)
+  DrawInvSlot(123,260,110,  3, 0,16,  1, stuff[44])   (* Heal Scroll *)
 END DrawInventory;
 
 PROCEDURE DrawFairy;

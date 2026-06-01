@@ -137,7 +137,8 @@ END ReadBool4;
 
 PROCEDURE SaveGame(slot, savedDayNight, savedFatigue, savedHunger,
                    savedCycle, savedLightTimer, savedSecretTimer,
-                   savedFreezeTimer: INTEGER): BOOLEAN;
+                   savedFreezeTimer, savedWardTimer,
+                   savedSanctuaryTimer: INTEGER): BOOLEAN;
 VAR path: ARRAY [0..63] OF CHAR;
     fd: CARDINAL;
     i, k, px, py, region: INTEGER;
@@ -153,7 +154,7 @@ BEGIN
   END;
 
   (* Header *)
-  buf[0] := 'F'; buf[1] := 'T'; buf[2] := 'A'; buf[3] := '3';
+  buf[0] := 'F'; buf[1] := 'T'; buf[2] := 'A'; buf[3] := '4';
   WriteBytes(fd, buf, 4);
 
   (* Active brother *)
@@ -212,6 +213,8 @@ BEGIN
     WriteInt4(fd, objects[i].region)
   END;
   FOR i := 0 TO 9 DO WriteBool4(fd, IsRegionDistributed(i)) END;
+  WriteInt4(fd, savedWardTimer);
+  WriteInt4(fd, savedSanctuaryTimer);
 
   Close(fd);
   AddLogLine("Game saved.");
@@ -222,13 +225,16 @@ END SaveGame;
 PROCEDURE LoadGame(slot: INTEGER;
                    VAR savedDayNight, savedFatigue, savedHunger,
                        savedCycle, savedLightTimer, savedSecretTimer,
-                       savedFreezeTimer: INTEGER): BOOLEAN;
+                       savedFreezeTimer, savedWardTimer,
+                       savedSanctuaryTimer: INTEGER): BOOLEAN;
 VAR path: ARRAY [0..63] OF CHAR;
     fd: CARDINAL;
     n, i, v, k, px, py, region, version: INTEGER;
     distributed: BOOLEAN;
     buf: ARRAY [0..3] OF CHAR;
 BEGIN
+  savedWardTimer := 0;
+  savedSanctuaryTimer := 0;
   MakePath(slot, path);
   OpenRead(path, fd);
   IF fd = 0 THEN
@@ -244,7 +250,8 @@ BEGIN
   ReadBytes(fd, buf, 4, n);
   IF (n < 4) OR (buf[0] # 'F') OR (buf[1] # 'T') OR
      (buf[2] # 'A') OR
-     ((buf[3] # '1') AND (buf[3] # '2') AND (buf[3] # '3')) THEN
+     ((buf[3] # '1') AND (buf[3] # '2') AND
+      (buf[3] # '3') AND (buf[3] # '4')) THEN
     AddLogLine("Invalid save file.");
     Close(fd);
     RETURN FALSE
@@ -264,11 +271,16 @@ BEGIN
     ReadInt4(fd, brothers[i].luck);
     ReadInt4(fd, brothers[i].kind);
     ReadInt4(fd, brothers[i].wealth);
-    IF version >= 3 THEN
+    IF version >= 4 THEN
       FOR k := 0 TO LastStuff DO ReadInt4(fd, brothers[i].stuff[k]) END
     ELSE
-      FOR k := 0 TO 34 DO ReadInt4(fd, brothers[i].stuff[k]) END;
-      FOR k := 35 TO LastStuff DO brothers[i].stuff[k] := 0 END
+      IF version >= 3 THEN
+        FOR k := 0 TO 39 DO ReadInt4(fd, brothers[i].stuff[k]) END;
+        FOR k := 40 TO LastStuff DO brothers[i].stuff[k] := 0 END
+      ELSE
+        FOR k := 0 TO 34 DO ReadInt4(fd, brothers[i].stuff[k]) END;
+        FOR k := 35 TO LastStuff DO brothers[i].stuff[k] := 0 END
+      END
     END;
     ReadBool4(fd, brothers[i].alive)
   END;
@@ -324,6 +336,13 @@ BEGIN
     FOR i := 0 TO 9 DO
       ReadBool4(fd, distributed);
       SetRegionDistributed(i, distributed)
+    END;
+    IF version >= 4 THEN
+      ReadInt4(fd, savedWardTimer);
+      ReadInt4(fd, savedSanctuaryTimer)
+    ELSE
+      savedWardTimer := 0;
+      savedSanctuaryTimer := 0
     END
   END;
 

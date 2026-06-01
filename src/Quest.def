@@ -5,10 +5,12 @@ PROCEDURE CheckWinCondition(): BOOLEAN;
 PROCEDURE ShowWinScreen;
 PROCEDURE SaveGame(slot, savedDayNight, savedFatigue, savedHunger,
                    savedCycle, savedLightTimer, savedSecretTimer,
-                   savedFreezeTimer: INTEGER): BOOLEAN;
+                   savedFreezeTimer, savedWardTimer,
+                   savedSanctuaryTimer: INTEGER): BOOLEAN;
 PROCEDURE LoadGame(slot: INTEGER;
                    VAR savedDayNight, savedFatigue, savedHunger,
                        savedCycle, savedLightTimer, savedSecretTimer,
-                       savedFreezeTimer: INTEGER): BOOLEAN;
+                       savedFreezeTimer, savedWardTimer,
+                       savedSanctuaryTimer: INTEGER): BOOLEAN;
 
 END Quest.
