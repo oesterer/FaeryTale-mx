@@ -4,7 +4,8 @@ FROM Strings IMPORT Assign;
 FROM Items IMPORT InventoryCount,
                   ItemGold, ItemFood, ItemKey, ItemSword,
                   ItemShield, ItemPotion, ItemGem, ItemScroll;
-FROM Brothers IMPORT brothers, activeBrother, HasStuff, HasWeapon;
+FROM Brothers IMPORT brothers, activeBrother, HasStuff, HasWeapon,
+                     StHealScroll, StKillScroll, StHomeScroll;
 
 (* Category tab labels — always shown as top 5 in each menu *)
 CONST
@@ -16,13 +17,14 @@ CONST
   LabTalk  = "Yell Say  Ask  ";
   LabGame  = "PauseMusicSoundQuit Load ";
   LabBuy   = "Food ArrowVial Mace SwordBow  Totem";
-  LabMagic = "StoneJewelVial Orb  TotemRing Skull";
+  LabMagic = "StoneJewelVial Orb  TotemRing SkullSpell";
   LabUse   = "Dirk Mace SwordBow  Wand LassoShellKey  Sun  Book ";
   LabSave  = "Save Exit ";
   LabKeys  = "Gold GreenBlue Red  Grey White";
   LabGive  = "Gold Book Writ Bone ";
   LabFile  = "  A    B    C    D    E    F    G    H  ";
   LabSell  = "AppleGrey ";
+  LabSpells = "Heal Kill Home ";
 
 PROCEDURE InitMenuDef(VAR m: MenuDef; lab: ARRAY OF CHAR;
                        n, col: INTEGER);
@@ -49,7 +51,7 @@ BEGIN
   cmode := MItems;
 
   InitMenuDef(menus[MItems], LabItems, 12, 6);
-  InitMenuDef(menus[MMagic], LabMagic, 12, 5);
+  InitMenuDef(menus[MMagic], LabMagic, 13, 5);
   InitMenuDef(menus[MTalk],  LabTalk,   8, 9);
   InitMenuDef(menus[MBuy],   LabBuy,   12, 10);
   InitMenuDef(menus[MGame],  LabGame,  10, 2);
@@ -59,6 +61,7 @@ BEGIN
   InitMenuDef(menus[MUse],   LabUse,   14, 8);
   InitMenuDef(menus[MFile],  LabFile,  13, 5);
   InitMenuDef(menus[MSell],  LabSell,   7, 10);
+  InitMenuDef(menus[MSpells], LabSpells, 8, 5);
 
   (* Items: tabs displayed+selectable, sub-options displayed *)
   SetEnabled(menus[MItems], 0, 3);  (* Items - selected *)
@@ -103,6 +106,7 @@ BEGIN
   SetEnabled(menus[MMagic], 3, 2);
   SetEnabled(menus[MMagic], 4, 2);
   FOR i := 5 TO 11 DO SetEnabled(menus[MMagic], i, 8) END;
+  SetEnabled(menus[MMagic], 12, 10);
 
   (* Save *)
   SetEnabled(menus[MSave], 0, 2);
@@ -139,6 +143,11 @@ BEGIN
   (* Sell: 5=Apple, 6=Grey key *)
   SetEnabled(menus[MSell], 5, 8);
   SetEnabled(menus[MSell], 6, 8);
+
+  (* Spells: entries are shown once their scroll has been collected. *)
+  SetEnabled(menus[MSpells], 5, 0);
+  SetEnabled(menus[MSpells], 6, 0);
+  SetEnabled(menus[MSpells], 7, 0);
 
   cmode := MItems;
   BuildOptions  (* just build initial options without reading inventory *)
@@ -217,6 +226,14 @@ BEGIN
   FOR i := 0 TO 6 DO
     menus[MMagic].enabled[i + 5] := SF(i + 9)
   END;
+  menus[MMagic].enabled[12] := 10;
+
+  IF HasStuff(StHealScroll) THEN menus[MSpells].enabled[5] := 10
+  ELSE menus[MSpells].enabled[5] := 0 END;
+  IF HasStuff(StKillScroll) THEN menus[MSpells].enabled[6] := 10
+  ELSE menus[MSpells].enabled[6] := 0 END;
+  IF HasStuff(StHomeScroll) THEN menus[MSpells].enabled[7] := 10
+  ELSE menus[MSpells].enabled[7] := 0 END;
 
   (* KEYS: 5-10 = stuff[16-21] *)
   FOR i := 0 TO 5 DO
@@ -242,7 +259,7 @@ END SetOptions;
 
 PROCEDURE GoMenu(mode: INTEGER);
 BEGIN
-  IF (mode < 0) OR (mode > 10) THEN RETURN END;
+  IF (mode < 0) OR (mode > 11) THEN RETURN END;
   cmode := mode;
   SetOptions
 END GoMenu;

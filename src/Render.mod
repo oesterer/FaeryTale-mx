@@ -25,7 +25,7 @@ FROM GameState IMPORT cycle, msgText, msgTimer, regionFade,
                      NumStoneCircles, GetStoneCircle;
 FROM DayNight IMPORT brightness, isNight, lightlevel, GetFadeRGB,
                      PaletteTickDue;
-FROM Brothers IMPORT activeBrother, brothers, Julian, Philip, Kevin;
+FROM Brothers IMPORT activeBrother, brothers, Julian, Philip, Kevin, LastStuff;
 FROM Assets IMPORT tileTex, hudTex, brotherTex, enemyTex, npcTex, dragonTex, shadowPB,
                    currentRegion, GetSectorByte, GetSectorByteForRegion,
                    GetMaskType, GetTilesBits, GetMapTag, DetectRegion,
@@ -1568,13 +1568,13 @@ VAR b, i: INTEGER;
     (* stuff array: maps inv_list indices to our inventory.
        0-4=weapons, 5-7=special, 8=arrows, 9-14=magic, 15-21=keys,
        22-30=quest items. We map what we track. *)
-    stuff: ARRAY [0..34] OF INTEGER;
+    stuff: ARRAY [0..LastStuff] OF INTEGER;
 BEGIN
   b := activeBrother;
 
   (* Read directly from brothers[].stuff[] — the authoritative inventory.
      stuff[0..4] are weapons (Dirk,Mace,Sword,Bow,Wand). *)
-  FOR i := 0 TO 34 DO stuff[i] := brothers[b].stuff[i] END;
+  FOR i := 0 TO LastStuff DO stuff[i] := brothers[b].stuff[i] END;
 
   (* Clear play area to black *)
   SetColor(ren, 0, 0, 0, 255);
@@ -1612,7 +1612,16 @@ BEGIN
   DrawInvSlot( 8, 14, 80,  0, 8, 8,  1, stuff[27]);  (* Herb *)
   DrawInvSlot( 9, 14, 90,  0, 8, 8,  1, stuff[28]);  (* Writ *)
   DrawInvSlot(10, 14,100,  0, 8, 8,  1, stuff[29]);  (* Bone *)
-  DrawInvSlot(12, 14,110,  0, 8, 8,  1, stuff[30])   (* Shard *)
+  DrawInvSlot(12, 14,110,  0, 8, 8,  1, stuff[30]);  (* Shard *)
+  DrawInvSlot(14,145, 80,  3, 0,16,  4, stuff[31]);  (* Mandrake *)
+  DrawInvSlot(14,170, 80,  3, 0,16,  4, stuff[32]);  (* Wolfsbane *)
+  DrawInvSlot(14,195, 80,  3, 0,16,  4, stuff[33]);  (* Mugwort *)
+  DrawInvSlot(14,220, 80,  3, 0,16,  4, stuff[34]);  (* Yarrow *)
+  DrawInvSlot(14,245, 80,  3, 0,16,  4, stuff[35]);  (* Nightshade *)
+  DrawInvSlot(14,270, 80,  3, 0,16,  4, stuff[36]);  (* Bloodroot *)
+  DrawInvSlot(15,170,110,  3, 0,16,  1, stuff[37]);  (* Heal Scroll *)
+  DrawInvSlot(15,210,110,  3, 0,16,  1, stuff[38]);  (* Kill Scroll *)
+  DrawInvSlot(15,250,110,  3, 0,16,  1, stuff[39])   (* Home Scroll *)
 END DrawInventory;
 
 PROCEDURE DrawFairy;

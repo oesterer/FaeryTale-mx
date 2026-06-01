@@ -39,6 +39,15 @@ CONST
   ObjFootstool = 31;
   ObjGreenKey = 153;
   ObjWhiteKey = 154;
+  ObjMandrake = 156;
+  ObjWolfsbane = 157;
+  ObjMugwort = 158;
+  ObjYarrow = 159;
+  ObjNightshade = 160;
+  ObjBloodroot = 161;
+  ObjHealScroll = 162;
+  ObjKillScroll = 163;
+  ObjHomeScroll = 164;
   ObjRedKey   = 242;
 
 TYPE

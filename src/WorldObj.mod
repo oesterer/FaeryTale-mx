@@ -82,6 +82,34 @@ BEGIN
   AddObj(19036, 15755, 148, 1, 3);
   AddObj(19041, 15755, 148, 1, 3);
   AddObj(19046, 15755, 148, 1, 3);
+  (* Spell testing stash near the starting point. *)
+  AddObj(18972, 15712, ObjHealScroll, 1, 3);
+  AddObj(19036, 15712, ObjKillScroll, 1, 3);
+  AddObj(19100, 15712, ObjHomeScroll, 1, 3);
+  AddObj(18972, 15740, ObjMandrake, 1, 3);
+  AddObj(18988, 15740, ObjMandrake, 1, 3);
+  AddObj(19004, 15740, ObjMandrake, 1, 3);
+  AddObj(19020, 15740, ObjMandrake, 1, 3);
+  AddObj(19036, 15740, ObjWolfsbane, 1, 3);
+  AddObj(19052, 15740, ObjWolfsbane, 1, 3);
+  AddObj(19068, 15740, ObjWolfsbane, 1, 3);
+  AddObj(19084, 15740, ObjWolfsbane, 1, 3);
+  AddObj(18972, 15768, ObjMugwort, 1, 3);
+  AddObj(18988, 15768, ObjMugwort, 1, 3);
+  AddObj(19004, 15768, ObjMugwort, 1, 3);
+  AddObj(19020, 15768, ObjMugwort, 1, 3);
+  AddObj(19036, 15768, ObjYarrow, 1, 3);
+  AddObj(19052, 15768, ObjYarrow, 1, 3);
+  AddObj(19068, 15768, ObjYarrow, 1, 3);
+  AddObj(19084, 15768, ObjYarrow, 1, 3);
+  AddObj(18972, 15796, ObjNightshade, 1, 3);
+  AddObj(18988, 15796, ObjNightshade, 1, 3);
+  AddObj(19004, 15796, ObjNightshade, 1, 3);
+  AddObj(19020, 15796, ObjNightshade, 1, 3);
+  AddObj(19036, 15796, ObjBloodroot, 1, 3);
+  AddObj(19052, 15796, ObjBloodroot, 1, 3);
+  AddObj(19068, 15796, ObjBloodroot, 1, 3);
+  AddObj(19084, 15796, ObjBloodroot, 1, 3);
   (* Prayer skeletons around the nearby stone circle at sector (84, 60). *)
   AddObj(21480, 15360, 14, 3, 3);
   AddObj(21528, 15360, 14, 3, 3);
@@ -356,21 +384,25 @@ BEGIN
         (* Original: objects with ID >= 128 use (id & 0x7F) for sprite frame
            and render from the bottom half (+8 offset, 8px tall).
            Same frame is shared — top half is one object, bottom half another. *)
-        IF BAND(CARDINAL(objects[i].objId), 128) # 0 THEN
-          sprY := INTEGER(BAND(CARDINAL(objects[i].objId), 127)) * ObjSprH + 8;
-          ht := 8
+        id := objects[i].objId;
+        IF (id >= ObjMandrake) AND (id <= ObjBloodroot) THEN
+          sprY := ObjUrn * ObjSprH
+        ELSIF (id >= ObjHealScroll) AND (id <= ObjHomeScroll) THEN
+          sprY := ObjChest * ObjSprH
+        ELSIF BAND(CARDINAL(id), 128) # 0 THEN
+          sprY := INTEGER(BAND(CARDINAL(id), 127)) * ObjSprH + 8
         ELSE
-          sprY := objects[i].objId * ObjSprH
+          sprY := id * ObjSprH
         END;
         (* Original: certain objects render at half height (8px).
            if inum==27 || (inum>=8 && inum<=12) || inum==25 || inum==26 ||
               (inum>16 && inum<24) || (inum & 128)  → ysize=8 *)
         ht := ObjSprH;
-        id := objects[i].objId;
         IF (id = 27) OR ((id >= 8) AND (id <= 12)) OR
            (id = 25) OR (id = 26) OR
            ((id > 16) AND (id < 24)) OR
-           (BAND(CARDINAL(id), 128) # 0) THEN
+           ((BAND(CARDINAL(id), 128) # 0) AND
+            ((id < ObjMandrake) OR (id > ObjHomeScroll))) THEN
           ht := 8
         END;
         IF sprY + ht <= 1856 THEN

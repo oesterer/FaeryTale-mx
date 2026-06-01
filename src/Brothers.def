@@ -19,6 +19,16 @@ CONST
   StWrit     = 28;  (* Writ from king *)
   StBone     = 29;  (* King's Bone *)
   StShard    = 30;  (* Shard — traversal gate *)
+  StMandrake = 31;
+  StWolfsbane = 32;
+  StMugwort = 33;
+  StYarrow = 34;
+  StNightshade = 35;
+  StBloodroot = 36;
+  StHealScroll = 37;
+  StKillScroll = 38;
+  StHomeScroll = 39;
+  LastStuff = 39;
 
 TYPE
   BrotherData = RECORD
@@ -30,7 +40,7 @@ TYPE
     kind:     INTEGER;
     wealth:   INTEGER;
     weaponInv: ARRAY [0..5] OF INTEGER;  (* count per weapon type *)
-    stuff:    ARRAY [0..34] OF INTEGER;  (* full inventory matching original *)
+    stuff:    ARRAY [0..LastStuff] OF INTEGER;
     startX:   INTEGER;
     startY:   INTEGER;
     alive:    BOOLEAN

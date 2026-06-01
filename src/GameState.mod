@@ -24,14 +24,18 @@ FROM Brothers IMPORT InitBrothers, SwitchToNext, ActiveName,
                      SaveBrotherState, RestoreBrotherState, brothers,
                      activeBrother, GiveStuff, SetStuff, AddWealth,
                      HasWeapon, HasStuff, AddStuffN,
-                     DecLuck, IncBrave, DecKind;
+                     DecLuck, IncBrave, DecKind,
+                     StMandrake, StWolfsbane, StMugwort, StYarrow,
+                     StNightshade, StBloodroot,
+                     StHealScroll, StKillScroll, StHomeScroll, LastStuff;
 FROM NPC IMPORT InitNPCs, MaterializeNPCs, TalkToNPC, LookAtNPC,
-               FindNearestNPC, GiveToNPC;
+               FindNearestNPC, GiveToNPC, ResetMaterialized;
 FROM Assets IMPORT InitAssets, PreloadAll, LoadHUD, currentRegion,
                    CheckRegionSwitch, SwitchRegion, DetectRegion,
                    GetTerrainAt, GetSectorByte, GetMapSector;
 FROM Menu IMPORT HandleMenuKey, SetOptions, cmode, menus, realOptions,
                  optionCount, MItems, MBuy, MGive, MGame, MSave, MFile, MSell,
+                 MSpells,
                  GoMenu,
                  PanelX, PanelY, BtnW, BtnH;
 FROM Music IMPORT SetMood, StopMusic, ResumeMusic, IsPlaying,
@@ -40,7 +44,10 @@ FROM Music IMPORT SetMood, StopMusic, ResumeMusic, IsPlaying,
 FROM Doors IMPORT InitDoors, CheckDoor, OpenDoorTile, RestoreDoorTiles,
                   CheckCloseDoors, UseKeyOnDoor;
 FROM WorldObj IMPORT CheckObjectPickup, objects, objCount, revealHidden,
-                     AddObj, DistributeRegion, LeaveItem;
+                     AddObj, DistributeRegion, LeaveItem,
+                     ObjMandrake, ObjWolfsbane, ObjMugwort, ObjYarrow,
+                     ObjNightshade, ObjBloodroot,
+                     ObjHealScroll, ObjKillScroll, ObjHomeScroll;
 FROM HudLog IMPORT AddLogLine, SetStats, InitHudLog;
 FROM Encounter IMPORT InitEncounters, UpdateEncounters, EnemiesNearby,
                       ActorsOnScreen, MoveExtent, xtype;
@@ -520,7 +527,7 @@ BEGIN
      brother=2 (Kevin active) → inherit from 1 (Philip). *)
   prev := activeBrother - 1;
   IF (prev >= 0) AND (prev <= 2) AND (NOT brothers[prev].alive) THEN
-    FOR k := 0 TO 30 DO
+    FOR k := 0 TO LastStuff DO
       INC(brothers[activeBrother].stuff[k], brothers[prev].stuff[k]);
       brothers[prev].stuff[k] := 0
     END
@@ -605,10 +612,27 @@ BEGIN
   ShowMessage("The ring pulses but nothing happens.")
 END HandleStoneTeleport;
 
+PROCEDURE KillWeakEnemies;
+VAR i: INTEGER;
+BEGIN
+  FOR i := 1 TO actorCount - 1 DO
+    IF (actors[i].vitality > 0) AND
+       (actors[i].actorType = TypeEnemy) AND
+       (actors[i].race < 7) THEN
+      actors[i].vitality := 0;
+      actors[i].state := StDying;
+      DEC(brothers[activeBrother].brave)
+    END
+  END;
+  IF battleFlag THEN Event(34) END;
+  ShowMessage("Dark energy destroys the enemies!")
+END KillWeakEnemies;
+
 PROCEDURE HandleMagic(optIdx: INTEGER);
-VAR itemIdx, si, i, v: INTEGER;
+VAR itemIdx, si, v: INTEGER;
     used: BOOLEAN;
 BEGIN
+  IF optIdx = 12 THEN GoMenu(MSpells); RETURN END;
   itemIdx := optIdx - 5;  (* 0=Stone,1=Jewel,2=Vial,3=Orb,4=Totem,5=Ring,6=Skull *)
   IF (itemIdx < 0) OR (itemIdx > 6) THEN RETURN END;
   si := 9 + itemIdx;  (* stuff[9..15] *)
@@ -641,17 +665,7 @@ BEGIN
       INC(freezeTimer, 250);
       ShowMessage("Time stands still!") |
     6: (* Jade Skull — kill all enemies with race < 7 *)
-      FOR i := 1 TO actorCount - 1 DO
-        IF (actors[i].vitality > 0) AND
-           (actors[i].actorType = TypeEnemy) AND
-           (actors[i].race < 7) THEN
-          actors[i].vitality := 0;
-          actors[i].state := StDying;
-          DEC(brothers[activeBrother].brave)
-        END
-      END;
-      IF battleFlag THEN Event(34) END;
-      ShowMessage("Dark energy destroys the enemies!")
+      KillWeakEnemies
   ELSE
     GoMenu(0); RETURN
   END;
@@ -661,6 +675,54 @@ BEGIN
   SetOptions;
   GoMenu(0)
 END HandleMagic;
+
+PROCEDURE HandleSpell(optIdx: INTEGER);
+BEGIN
+  CASE optIdx OF
+    5: (* Heal Scroll *)
+      IF NOT HasStuff(StHealScroll) THEN
+        ShowMessage("You do not have the Heal scroll.")
+      ELSIF brothers[activeBrother].stuff[StMandrake] < 1 THEN
+        ShowMessage("Heal requires one Mandrake.")
+      ELSE
+        DEC(brothers[activeBrother].stuff[StMandrake]);
+        INC(actors[0].vitality, 20);
+        ShowMessage("The Heal spell restores 20 health.")
+      END |
+    6: (* Kill Scroll *)
+      IF NOT HasStuff(StKillScroll) THEN
+        ShowMessage("You do not have the Kill scroll.")
+      ELSIF brothers[activeBrother].stuff[StBloodroot] < 2 THEN
+        ShowMessage("Kill requires two Bloodroot.")
+      ELSE
+        DEC(brothers[activeBrother].stuff[StBloodroot], 2);
+        KillWeakEnemies
+      END |
+    7: (* Home Scroll *)
+      IF NOT HasStuff(StHomeScroll) THEN
+        ShowMessage("You do not have the Home scroll.")
+      ELSIF brothers[activeBrother].stuff[StYarrow] < 2 THEN
+        ShowMessage("Home requires two Yarrow.")
+      ELSE
+        DEC(brothers[activeBrother].stuff[StYarrow], 2);
+        actors[0].absX := 19036;
+        actors[0].absY := 15755;
+        actors[0].state := StStill;
+        actorCount := 1;
+        battleFlag := FALSE;
+        prevBattle := FALSE;
+        aftermathDone := FALSE;
+        ResetMaterialized;
+        SwitchRegion(3);
+        InitPlace(actors[0].absX, actors[0].absY, 3);
+        ShowMessage("The Home spell returns you to the beginning.")
+      END
+  ELSE
+    GoMenu(0); RETURN
+  END;
+  SetOptions;
+  GoMenu(0)
+END HandleSpell;
 
 PROCEDURE HandleCamp;
 BEGIN
@@ -776,7 +838,8 @@ BEGIN
         END
       END;
       GoMenu(0) |
-   10: HandleSell(optIdx)
+   10: HandleSell(optIdx) |
+   11: HandleSpell(optIdx)
   ELSE END
 END HandleMenuClick;
 
@@ -813,6 +876,15 @@ BEGIN
      151: ShowMessage("Found a shell!"); GiveStuff(6) |
      153: ShowMessage("Found a green key!"); GiveStuff(17) |
      154: ShowMessage("Found a white key!"); GiveStuff(21) |
+     ObjMandrake: ShowMessage("Found Mandrake!"); GiveStuff(StMandrake) |
+     ObjWolfsbane: ShowMessage("Found Wolfsbane!"); GiveStuff(StWolfsbane) |
+     ObjMugwort: ShowMessage("Found Mugwort!"); GiveStuff(StMugwort) |
+     ObjYarrow: ShowMessage("Found Yarrow!"); GiveStuff(StYarrow) |
+     ObjNightshade: ShowMessage("Found Nightshade!"); GiveStuff(StNightshade) |
+     ObjBloodroot: ShowMessage("Found Bloodroot!"); GiveStuff(StBloodroot) |
+     ObjHealScroll: ShowMessage("Found the Heal scroll!"); GiveStuff(StHealScroll) |
+     ObjKillScroll: ShowMessage("Found the Kill scroll!"); GiveStuff(StKillScroll) |
+     ObjHomeScroll: ShowMessage("Found the Home scroll!"); GiveStuff(StHomeScroll) |
      242: ShowMessage("Found a red key!"); GiveStuff(19) |
       27: ShowMessage("% found the Golden Lasso!"); SetStuff(5, 1) |
      138: ShowMessage("% found the King's Bone!"); SetStuff(29, 1) |

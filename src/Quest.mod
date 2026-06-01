@@ -4,7 +4,7 @@ IMPLEMENTATION MODULE Quest;
 
 FROM Strings IMPORT Assign, Concat;
 FROM Actor IMPORT actors, actorCount;
-FROM Brothers IMPORT brothers, activeBrother, AddWealth;
+FROM Brothers IMPORT brothers, activeBrother, AddWealth, LastStuff;
 FROM Assets IMPORT currentRegion, SwitchRegion, DetectRegion, GetTerrainAt;
 FROM Narration IMPORT InitPlace;
 FROM NPC IMPORT ResetMaterialized;
@@ -153,7 +153,7 @@ BEGIN
   END;
 
   (* Header *)
-  buf[0] := 'F'; buf[1] := 'T'; buf[2] := 'A'; buf[3] := '2';
+  buf[0] := 'F'; buf[1] := 'T'; buf[2] := 'A'; buf[3] := '3';
   WriteBytes(fd, buf, 4);
 
   (* Active brother *)
@@ -167,7 +167,7 @@ BEGIN
     WriteInt4(fd, brothers[i].luck);
     WriteInt4(fd, brothers[i].kind);
     WriteInt4(fd, brothers[i].wealth);
-    FOR k := 0 TO 34 DO WriteInt4(fd, brothers[i].stuff[k]) END;
+    FOR k := 0 TO LastStuff DO WriteInt4(fd, brothers[i].stuff[k]) END;
     WriteBool4(fd, brothers[i].alive)
   END;
 
@@ -243,7 +243,8 @@ BEGIN
   (* Verify header *)
   ReadBytes(fd, buf, 4, n);
   IF (n < 4) OR (buf[0] # 'F') OR (buf[1] # 'T') OR
-     (buf[2] # 'A') OR ((buf[3] # '1') AND (buf[3] # '2')) THEN
+     (buf[2] # 'A') OR
+     ((buf[3] # '1') AND (buf[3] # '2') AND (buf[3] # '3')) THEN
     AddLogLine("Invalid save file.");
     Close(fd);
     RETURN FALSE
@@ -263,7 +264,12 @@ BEGIN
     ReadInt4(fd, brothers[i].luck);
     ReadInt4(fd, brothers[i].kind);
     ReadInt4(fd, brothers[i].wealth);
-    FOR k := 0 TO 34 DO ReadInt4(fd, brothers[i].stuff[k]) END;
+    IF version >= 3 THEN
+      FOR k := 0 TO LastStuff DO ReadInt4(fd, brothers[i].stuff[k]) END
+    ELSE
+      FOR k := 0 TO 34 DO ReadInt4(fd, brothers[i].stuff[k]) END;
+      FOR k := 35 TO LastStuff DO brothers[i].stuff[k] := 0 END
+    END;
     ReadBool4(fd, brothers[i].alive)
   END;
 

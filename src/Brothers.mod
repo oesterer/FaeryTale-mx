@@ -8,12 +8,12 @@ PROCEDURE ClearInventory(VAR b: BrotherData);
 VAR i: INTEGER;
 BEGIN
   FOR i := 0 TO 5 DO b.weaponInv[i] := 0 END;
-  FOR i := 0 TO 34 DO b.stuff[i] := 0 END
+  FOR i := 0 TO LastStuff DO b.stuff[i] := 0 END
 END ClearInventory;
 
 PROCEDURE HasStuff(idx: INTEGER): BOOLEAN;
 BEGIN
-  IF (idx >= 0) AND (idx <= 34) THEN
+  IF (idx >= 0) AND (idx <= LastStuff) THEN
     RETURN brothers[activeBrother].stuff[idx] > 0
   END;
   RETURN FALSE
@@ -30,21 +30,21 @@ END HasWeapon;
 
 PROCEDURE GiveStuff(idx: INTEGER);
 BEGIN
-  IF (idx >= 0) AND (idx <= 34) THEN
+  IF (idx >= 0) AND (idx <= LastStuff) THEN
     INC(brothers[activeBrother].stuff[idx])
   END
 END GiveStuff;
 
 PROCEDURE AddStuffN(idx, n: INTEGER);
 BEGIN
-  IF (idx >= 0) AND (idx <= 34) THEN
+  IF (idx >= 0) AND (idx <= LastStuff) THEN
     INC(brothers[activeBrother].stuff[idx], n)
   END
 END AddStuffN;
 
 PROCEDURE SetStuff(idx, val: INTEGER);
 BEGIN
-  IF (idx >= 0) AND (idx <= 34) THEN
+  IF (idx >= 0) AND (idx <= LastStuff) THEN
     brothers[activeBrother].stuff[idx] := val
   END
 END SetStuff;
