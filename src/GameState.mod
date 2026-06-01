@@ -571,6 +571,16 @@ BEGIN
   stoneX[10] := 84; stoneY[10] := 60
 END InitStoneList;
 
+PROCEDURE GetStoneCircle(i: INTEGER; VAR x, y: INTEGER);
+BEGIN
+  IF (i < 0) OR (i >= NumStoneCircles) THEN
+    x := 0; y := 0;
+    RETURN
+  END;
+  x := stoneX[i] * 256 + 128;
+  y := stoneY[i] * 256 + 128
+END GetStoneCircle;
+
 PROCEDURE HandleStoneTeleport;
 VAR sx, sy, i, dest, newX, newY: INTEGER;
 BEGIN

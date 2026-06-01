@@ -21,7 +21,8 @@ FROM Items IMPORT items, itemCount, inventory,
                   ItemShield, ItemPotion, ItemGem, ItemScroll;
 FROM GameState IMPORT cycle, msgText, msgTimer, regionFade,
                      fairyActive, fairyX, colorPlayTimer,
-                     witchFlag, witchIndex, witchS1, witchS2;
+                     witchFlag, witchIndex, witchS1, witchS2,
+                     NumStoneCircles, GetStoneCircle;
 FROM DayNight IMPORT brightness, isNight, lightlevel, GetFadeRGB,
                      PaletteTickDue;
 FROM Brothers IMPORT activeBrother, brothers, Julian, Philip, Kevin;
@@ -38,6 +39,7 @@ FROM HudFont IMPORT DrawHudStr, DrawMenuStr;
 FROM WorldObj IMPORT objTex;
 FROM NPC IMPORT GetSetfigSprite, PrayerSkeletonRace;
 FROM Carrier IMPORT riding, RideSwan;
+FROM DebugMap IMPORT GetTileMapColor;
 FROM HudLog IMPORT GetLine, GetStatBrv, GetStatLck, GetStatKnd,
                    GetStatWlth, GetStatVit, logDirty, statDirty;
 
@@ -1349,39 +1351,35 @@ END DrawMinimap;
 
 (* ---- Bird Totem region view ---- *)
 
-PROCEDURE BirdTerrainColor(terrain: INTEGER; VAR r, g, b: INTEGER);
-BEGIN
-  CASE terrain OF
-    0:  r := 45;  g := 125; b := 45  |  (* passable ground *)
-    1:  r := 85;  g := 85;  b := 85  |  (* walls *)
-    2:  r := 190; g := 165; b := 100 |  (* roads *)
-    3:  r := 205; g := 190; b := 135 |  (* shores *)
-    5:  r := 35;  g := 90;  b := 180 |  (* water *)
-    8:  r := 80;  g := 105; b := 60  |  (* swamp *)
-    9:  r := 145; g := 135; b := 115 |  (* palace ground *)
-    10: r := 105; g := 90;  b := 70  |  (* rough edges *)
-    15: r := 10;  g := 70;  b := 25     (* forest / doors *)
-  ELSE
-    r := 110; g := 100; b := 90
-  END
-END BirdTerrainColor;
-
 PROCEDURE DrawBirdView;
 CONST
   MapCols = 128;
   MapRows = 64;
   CellSize = 2;
-  SampleSize = 128;
-VAR x, y, i, r, g, b, baseX, baseY, mapX, mapY, px, py: INTEGER;
+  SampleSize = 32;
+  RegionW = 16384;
+  RegionH = 8192;
+VAR x, y, i, r, g, b, regionX, regionY, baseX, baseY, mapX, mapY, px, py: INTEGER;
+    sampleX, sampleY: INTEGER;
 BEGIN
   IF currentRegion < 0 THEN RETURN END;
 
   IF currentRegion < 8 THEN
-    baseX := (currentRegion MOD 2) * 16384;
-    baseY := (currentRegion DIV 2) * 8192
+    regionX := (currentRegion MOD 2) * RegionW;
+    regionY := (currentRegion DIV 2) * RegionH
   ELSE
-    baseX := 0;
-    baseY := (currentRegion DIV 2) * 8192
+    regionX := 0;
+    regionY := (currentRegion DIV 2) * RegionH
+  END;
+  baseX := actors[0].absX - (MapCols * SampleSize) DIV 2;
+  baseY := actors[0].absY - (MapRows * SampleSize) DIV 2;
+  IF baseX < regionX THEN baseX := regionX END;
+  IF baseY < regionY THEN baseY := regionY END;
+  IF baseX + MapCols * SampleSize > regionX + RegionW THEN
+    baseX := regionX + RegionW - MapCols * SampleSize
+  END;
+  IF baseY + MapRows * SampleSize > regionY + RegionH THEN
+    baseY := regionY + RegionH - MapRows * SampleSize
   END;
   mapX := (PlayW - MapCols * CellSize) DIV 2;
   mapY := (PlayH - MapRows * CellSize) DIV 2;
@@ -1390,9 +1388,9 @@ BEGIN
   FillRect(ren, 0, 0, S(PlayW), S(PlayH));
   FOR y := 0 TO MapRows - 1 DO
     FOR x := 0 TO MapCols - 1 DO
-      BirdTerrainColor(GetTerrainAt(baseX + x * SampleSize + SampleSize DIV 2,
-                                    baseY + y * SampleSize + SampleSize DIV 2),
-                       r, g, b);
+      sampleX := baseX + x * SampleSize + SampleSize DIV 2;
+      sampleY := baseY + y * SampleSize + SampleSize DIV 2;
+      GetTileMapColor(GetSectorByte(sampleX, sampleY), r, g, b);
       SetColor(ren, r, g, b, 255);
       FillRect(ren, S(mapX + x * CellSize), S(mapY + y * CellSize),
                S(CellSize), S(CellSize))
@@ -1401,6 +1399,22 @@ BEGIN
   SetColor(ren, 190, 200, 205, 255);
   DrawRect(ren, S(mapX - 1), S(mapY - 1),
            S(MapCols * CellSize + 2), S(MapRows * CellSize + 2));
+
+  SetColor(ren, 40, 240, 240, 255);
+  FOR i := 0 TO NumStoneCircles - 1 DO
+    GetStoneCircle(i, sampleX, sampleY);
+    IF (sampleX >= baseX) AND
+       (sampleX < baseX + MapCols * SampleSize) AND
+       (sampleY >= baseY) AND
+       (sampleY < baseY + MapRows * SampleSize) THEN
+      px := (sampleX - baseX) DIV SampleSize;
+      py := (sampleY - baseY) DIV SampleSize;
+      DrawRect(ren, S(mapX + px * CellSize - 3),
+               S(mapY + py * CellSize - 3), S(7), S(7));
+      DrawRect(ren, S(mapX + px * CellSize - 2),
+               S(mapY + py * CellSize - 2), S(5), S(5))
+    END
+  END;
 
   SetColor(ren, 230, 55, 45, 255);
   FOR i := 1 TO actorCount - 1 DO

@@ -126,6 +126,17 @@ BEGIN
   tc[248]:=4;tc[249]:=5;tc[250]:=6;tc[251]:=1;tc[252]:=6;tc[253]:=6;tc[254]:=6;tc[255]:=1
 END InitTileColors;
 
+PROCEDURE GetTileMapColor(tileByte: INTEGER; VAR r, g, b: INTEGER);
+VAR idx: INTEGER;
+BEGIN
+  IF (tileByte < 0) OR (tileByte > 255) THEN
+    r := 0; g := 0; b := 0;
+    RETURN
+  END;
+  idx := tc[tileByte];
+  r := palR[idx]; g := palG[idx]; b := palB[idx]
+END GetTileMapColor;
+
 PROCEDURE InitDebugMap;
 BEGIN
   dbgWin := NIL;

@@ -7,5 +7,6 @@ PROCEDURE InitDebugMap;
 PROCEDURE ToggleDebugMap;
 PROCEDURE UpdateDebugMap;
 PROCEDURE IsOpen(): BOOLEAN;
+PROCEDURE GetTileMapColor(tileByte: INTEGER; VAR r, g, b: INTEGER);
 
 END DebugMap.

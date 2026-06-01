@@ -8,6 +8,7 @@ CONST
   ViewNormal    = 0;
   ViewInventory = 4;
   ViewBird      = 5;
+  NumStoneCircles = 11;
 
 VAR
   running: BOOLEAN;
@@ -32,5 +33,6 @@ VAR
 PROCEDURE InitGame;
 PROCEDURE UpdateGame;
 PROCEDURE ShowMessage(msg: ARRAY OF CHAR);
+PROCEDURE GetStoneCircle(i: INTEGER; VAR x, y: INTEGER);
 
 END GameState.
