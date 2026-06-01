@@ -18,8 +18,8 @@ system.
 
 | Action | Control |
 | --- | --- |
-| Move | Arrow keys or `W`, `A`, `S`, `D` |
-| Attack | `Space` |
+| Move | Arrow keys, `W`, `A`, `S`, `D`, or hold the left mouse button over the playfield |
+| Attack | `Space` or hold the right mouse button |
 | Take nearby items | `E` or `Items > Take` |
 | Talk | `T` or the `Talk` menu |
 | Eat an apple | `F` or `Items > Do > Eat` |

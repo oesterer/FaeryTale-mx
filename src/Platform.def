@@ -30,7 +30,8 @@ TYPE
     menuKey:   CHAR;    (* letter key pressed this frame, or 0C *)
     mouseX:    INTEGER; (* mouse screen X *)
     mouseY:    INTEGER; (* mouse screen Y *)
-    mouseClick: BOOLEAN (* left mouse button clicked this frame *)
+    mouseClick: BOOLEAN; (* left mouse button clicked this frame *)
+    mouseMove:  BOOLEAN  (* left mouse button held over playfield *)
   END;
 
 VAR

@@ -25,7 +25,7 @@ VAR
 
 BEGIN
   WriteString("Faery Tale Adventure - Modula-2 reimplementation"); WriteLn;
-  WriteString("  WASD/Arrows=move  Space=attack  M=debug map  F11=fullscreen"); WriteLn;
+  WriteString("  WASD/Arrows/Left Mouse=move  Space/Right Mouse=attack  F11=fullscreen"); WriteLn;
 
   IF NOT Init() THEN
     WriteString("Failed to initialize platform"); WriteLn;

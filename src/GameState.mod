@@ -2,7 +2,8 @@ IMPLEMENTATION MODULE GameState;
 
 FROM Strings IMPORT Assign, Concat;
 FROM InOut IMPORT WriteString, WriteInt, WriteLn;
-FROM Platform IMPORT PollInput, InputState, DirNone,
+FROM Platform IMPORT PollInput, InputState, DirN, DirNE, DirE, DirSE,
+                    DirS, DirSW, DirW, DirNW, DirNone,
                     ScreenW, PlayH, TextH, Scale, cheatKeys;
 FROM Actor IMPORT actors, actorCount, InitAll,
                   TypeEnemy, TypeSetfig,
@@ -1483,6 +1484,26 @@ BEGIN
   END
 END BattleAftermath;
 
+PROCEDURE PointerDirection(mx, my: INTEGER): INTEGER;
+VAR dx, dy, ax, ay: INTEGER;
+BEGIN
+  dx := mx - (actors[0].absX - camX) * Scale;
+  dy := my - (actors[0].absY - camY) * Scale;
+  ax := dx; ay := dy;
+  IF ax < 0 THEN ax := -ax END;
+  IF ay < 0 THEN ay := -ay END;
+  IF (ax <= 4 * Scale) AND (ay <= 4 * Scale) THEN RETURN DirNone END;
+  IF ax > ay * 2 THEN
+    IF dx < 0 THEN RETURN DirW ELSE RETURN DirE END
+  ELSIF ay > ax * 2 THEN
+    IF dy < 0 THEN RETURN DirN ELSE RETURN DirS END
+  ELSIF dx < 0 THEN
+    IF dy < 0 THEN RETURN DirNW ELSE RETURN DirSW END
+  ELSE
+    IF dy < 0 THEN RETURN DirNE ELSE RETURN DirSE END
+  END
+END PointerDirection;
+
 PROCEDURE UpdatePlayer;
 VAR newX, newY: INTEGER;
 BEGIN
@@ -1745,6 +1766,9 @@ BEGIN
   input.attack := FALSE; input.usePotion := FALSE;
   input.useFood := FALSE; input.talk := FALSE; input.toggleMap := FALSE;
   PollInput(input);
+  IF (input.dirKey = DirNone) AND input.mouseMove THEN
+    input.dirKey := PointerDirection(input.mouseX, input.mouseY)
+  END;
   IF viewStatus # ViewNormal THEN
     IF input.quit THEN running := FALSE; RETURN END;
     IF input.attack OR (input.menuKey # 0C) OR

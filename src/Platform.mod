@@ -10,7 +10,7 @@ FROM Gfx IMPORT Init AS GfxInit, Quit AS GfxQuit,
                 FULLSCREEN_DESKTOP, RENDER_ACCELERATED, RENDER_VSYNC;
 FROM Events IMPORT Poll, QUIT_EVENT, KEYDOWN, MOUSEDOWN, WINDOW_EVENT,
                    KeyCode, KeyMod, WindowEvent, WEVT_RESIZED,
-                   IsKeyPressed, MouseX, MouseY, MouseButton,
+                   IsKeyPressed, MouseX, MouseY, MouseButton, GetMouseState,
                    SCAN_UP, SCAN_DOWN, SCAN_LEFT, SCAN_RIGHT,
                    SCAN_W, SCAN_A, SCAN_S, SCAN_D,
                    SCAN_SPACE, SCAN_P, SCAN_F, SCAN_T,
@@ -91,11 +91,23 @@ BEGIN
   GfxQuit
 END Shutdown;
 
+PROCEDURE MapMouse(mx, my: INTEGER; VAR frameX, frameY: INTEGER): BOOLEAN;
+BEGIN
+  IF (mx >= viewX) AND (mx < viewX + viewW) AND
+     (my >= viewY) AND (my < viewY + viewH) THEN
+    frameX := (mx - viewX) * FrameW DIV viewW;
+    frameY := (my - viewY) * FrameH DIV viewH;
+    RETURN TRUE
+  END;
+  RETURN FALSE
+END MapMouse;
+
 PROCEDURE PollInput(VAR inp: InputState);
-VAR evt, kc, mx, my: INTEGER;
+VAR evt, kc, mx, my, buttons: INTEGER;
 BEGIN
   inp.menuKey := 0C;
   inp.mouseClick := FALSE;
+  inp.mouseMove := FALSE;
   LOOP
     evt := Poll();
     IF evt = 0 THEN EXIT END;
@@ -116,11 +128,8 @@ BEGIN
     ELSIF evt = MOUSEDOWN THEN
       IF MouseButton() = 1 THEN  (* left button *)
         mx := MouseX(); my := MouseY();
-        IF (mx >= viewX) AND (mx < viewX + viewW) AND
-           (my >= viewY) AND (my < viewY + viewH) THEN
-          inp.mouseClick := TRUE;
-          inp.mouseX := (mx - viewX) * FrameW DIV viewW;
-          inp.mouseY := (my - viewY) * FrameH DIV viewH
+        IF MapMouse(mx, my, inp.mouseX, inp.mouseY) THEN
+          inp.mouseClick := TRUE
         END
       END
     ELSIF (evt = WINDOW_EVENT) AND (WindowEvent() = WEVT_RESIZED) THEN
@@ -153,7 +162,13 @@ BEGIN
     inp.dirKey := DirNone
   END;
 
-  inp.attack := IsKeyPressed(SCAN_SPACE);
+  buttons := GetMouseState(mx, my);
+  IF MapMouse(mx, my, inp.mouseX, inp.mouseY) THEN
+    inp.mouseMove := (BAND(CARDINAL(buttons), 1) # 0) AND
+                     (inp.mouseY < PlayH * Scale)
+  END;
+  inp.attack := IsKeyPressed(SCAN_SPACE) OR
+                (BAND(CARDINAL(buttons), 4) # 0);
   inp.usePotion := IsKeyPressed(SCAN_P);
   inp.useFood := IsKeyPressed(SCAN_F);
   inp.talk := IsKeyPressed(SCAN_T)
