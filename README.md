@@ -75,5 +75,7 @@ Enemies
   - Any key, click, or movement closes the view.
 
 
+Save and Load Function
 
+Screen Resizing and Maximizing
 
