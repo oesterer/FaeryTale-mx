@@ -1,81 +1,135 @@
 # Faery Tale Adventure
 
-Changes in this fork:
+This fork expands the original game with larger encounters, quality-of-life
+improvements, persistent door state, local save files, and a collectible spell
+system.
 
+## Screenshots
 
-Enemies
+| Expanded encounters | Spell scrolls and ingredients |
+| --- | --- |
+| ![A larger group of enemies surrounding the player](pics/MoreFoes.png) | ![Spell scrolls and ingredients placed in the world](pics/ScrollsAndIngridients.png) |
 
-  - Increased actor capacity from 20 to 48.
-  - Increased simultaneous enemies from 3 to 30.
-  - Expanded combat cooldown and rendering arrays so additional enemies can attack and
-    render correctly.
+| Spell menu | Herb inventory |
+| --- | --- |
+| ![Available spells listed in the Magic menu](pics/Spells.png) | ![Magical herb quantities listed in the Magic menu](pics/MagicHerbs.png) |
 
-  - Increased random encounter likelihood with a 20x multiplier, capped at the maximum
-    roll threshold.
+## Controls
 
-  - Wraiths now always leave a collectible item if their normal loot roll is empty.
+| Action | Control |
+| --- | --- |
+| Move | Arrow keys or `W`, `A`, `S`, `D` |
+| Attack | `Space` |
+| Take nearby items | `E` or `Items > Take` |
+| Talk | `T` or the `Talk` menu |
+| Eat an apple | `F` or `Items > Do > Eat` |
+| Use a potion | `P` |
+| Toggle fullscreen | `F11` or `Alt+Enter` |
 
-  Player Setup
+The game window is resizable. The original aspect ratio is preserved when the
+window changes size or switches to fullscreen.
 
-  - Julian now starts with:
-      - 200 vitality
-      - stronger weapon configuration
-      - 150 bravery
-      - 200 gold
-      - 6 glass vials
-      - 4 Bird Totems
-      - initial weapon inventory entries
+## Gameplay Changes
 
-  Apples
+### Enemies
 
-  - Added a stash of 10 apples at Julian’s spawn location.
-  - Added 1,000 apples across the outdoor map: 125 per outdoor region.
-  - Apple placement prefers grass next to trees.
-  - Apples are consumable using the food action.
-  - Eating an apple reduces hunger by 30.
+- Increased actor capacity from 20 to 48.
+- Increased simultaneous enemies from 3 to 30.
+- Expanded combat cooldown and rendering arrays so additional enemies attack
+  and render correctly.
+- Increased random encounter likelihood with a 20x multiplier, capped at the
+  maximum roll threshold.
+- Wraiths are the main source of magical supplies. Ingredients are frequent and
+  spell scrolls are rare.
 
-  Camping
+### Player Setup
 
-  - Added Camp to the Items menu.
-  - Camping is allowed outdoors when the player is tired and not fighting.
-  - Camping consumes 2 apples.
-  - Camp sleep no longer applies the bed-specific wake-up position adjustment.
+Julian now starts with:
 
-  Prayer Skeletons
+- 200 vitality
+- A stronger weapon configuration
+- 150 bravery
+- 200 gold
+- 6 glass vials
+- 4 Bird Totems
+- Initial weapon inventory entries
 
-  - Added 4 non-hostile skeleton NPCs at the nearby stone circle.
-  - They render using the skeleton enemy sprites.
-  - Talking to them displays "Ohm Ohm!".
+### Apples and Camping
 
-  Doors And Saves
+- Added a stash of 10 apples at Julian's spawn location.
+- Added 1,000 apples across the outdoor map: 125 per outdoor region.
+- Apple placement prefers grass next to trees.
+- Eating an apple reduces hunger by 30.
+- Camping is available from `Items > Do > Camp`.
+- Camping is allowed outdoors when the player is tired and not fighting.
+- Camping consumes 2 apples.
+- Camp sleep does not apply the bed-specific wake-up position adjustment.
 
-  - Doors unlocked with keys remain unlocked when reopened.
-  - Up to 128 unlocked doors are tracked.
-  - Unlocked-door state is saved and loaded.
-  - Older saves remain compatible because the new door data is appended optionally.
+### Prayer Skeletons
 
-  Selling Items
+- Added 4 non-hostile skeleton NPCs at the nearby stone circle.
+- They render using the skeleton enemy sprites.
+- Talking to them displays `"Ohm Ohm!"`.
 
-  - Added Sell to the Items menu.
-  - Selling is only available near a tavern bartender.
-  - Apples sell for 100 gold.
-  - Grey keys sell for 50 gold.
+### Trade
 
-  Controls
+`Trade` combines the `Buy`, `Sell`, and `Give` actions. Selling is only
+available near a tavern bartender.
 
-  - Added E as a direct shortcut for taking nearby items.
+| Item | Sale price |
+| --- | ---: |
+| Apple | 100 gold |
+| Grey key | 50 gold |
 
-  Bird Totem
+### Doors and Saves
 
-  - Implemented the Bird Totem properly.
-  - It now opens a dedicated overhead region map instead of incorrectly opening inventory.
-  - The map displays sampled terrain, living actors in red, and the player as a blinking
-    white/yellow marker.
+- Doors unlocked with keys remain unlocked when reopened.
+- Up to 128 unlocked doors are tracked.
+- Unlocked-door state is saved and loaded.
+- Older saves remain compatible because the new door data is appended
+  optionally.
+- `Game > Save` and `Game > Load` provide slots `A` through `H`.
+- Save files are written locally using the slot name, such as `A` or `B`.
 
-  - Any key, click, or movement closes the view.
+### Bird Totem
 
+- Bird Totems open a dedicated overhead region map.
+- The map displays terrain, roads, stone circles, living actors in red, and the
+  player as a blinking white and yellow marker.
+- Any key, click, or movement closes the map.
 
-Save and Load Function
+## Magic, Ingredients, and Spells
 
-Screen Resizing and Maximizing
+Magical ingredients and scrolls appear as distinct sprites in the world and
+inventory. A spell becomes available after its matching scroll has been
+collected. Casting consumes ingredients but does not consume the scroll.
 
+| Magic menu action | Purpose |
+| --- | --- |
+| `Magic > Spell` | Cast an available spell |
+| `Magic > Study` | Review collected scroll recipes and effects |
+| `Magic > Herbs` | Inspect ingredient quantities and properties |
+
+### Magical Ingredients
+
+| Ingredient | Properties |
+| --- | --- |
+| Mandrake | Healing, growth, vitality |
+| Wolfsbane | Protection, suppression |
+| Mugwort | Perception, dreams, movement |
+| Yarrow | Light, safety, navigation |
+| Nightshade | Poison, fear, curses |
+| Bloodroot | Direct damage, aggressive magic |
+
+### Available Spells
+
+| Spell | Required ingredients | Effect |
+| --- | --- | --- |
+| Ward | 1 Wolfsbane + 1 Yarrow | Reduces incoming damage for a limited time |
+| Freeze | 2 Wolfsbane + 1 Mugwort | Briefly stops enemies like the Gold Ring |
+| Fire | 1 Bloodroot + 1 Nightshade | Damages nearby enemies |
+| Fear | 1 Nightshade + 1 Bloodroot | Makes weaker nearby enemies flee |
+| Light | 1 Yarrow | Illuminates dark areas like the Green Jewel |
+| Sanctuary | 2 Wolfsbane + 2 Yarrow | Prevents new enemy encounters temporarily |
+| Harvest | 1 Mandrake + 1 Mugwort | Collects nearby items, including loot carried by living and dead enemies |
+| Heal | 1 Wolfsbane + 1 Mandrake | Restores 15 health |

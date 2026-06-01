@@ -136,6 +136,9 @@ PROCEDURE DrawHudStr(ren: Renderer; s: ARRAY OF CHAR;
 VAR i, cx, idx, dw, dh: INTEGER;
 BEGIN
   IF amberTex = NIL THEN RETURN END;
+  (* Screen-space intro and victory text share this texture and can change its
+     modulation. HUD messages and stats always use the original brown pen. *)
+  SetColorMod(amberTex, 170, 85, 0);
   cx := hx;
   dh := MapH(AmberH);
   i := 0;

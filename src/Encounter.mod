@@ -173,6 +173,7 @@ BEGIN
   actors[idx].environ := 0;
   actors[idx].facing := 0;
   actors[idx].visible := TRUE;
+  actors[idx].looted := FALSE;
   wt := Rand(4);
   w := chart[race].arms * 4 + wt;
   IF w > 31 THEN w := 31 END;

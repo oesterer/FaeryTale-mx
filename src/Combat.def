@@ -8,8 +8,4 @@ VAR wardTimer: INTEGER;
 PROCEDURE UpdateCombat;
 PROCEDURE DoHit(attacker, defender: INTEGER);
 
-(* Search a dead enemy for its weapon. Returns weapon code or -1.
-   Marks the corpse as looted so it can't be searched again. *)
-PROCEDURE SearchBody(enemyIdx: INTEGER): INTEGER;
-
 END Combat.

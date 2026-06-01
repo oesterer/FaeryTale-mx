@@ -120,19 +120,6 @@ BEGIN
   END
 END IsFacing;
 
-(* --- Search dead enemy for weapon loot --- *)
-
-PROCEDURE SearchBody(enemyIdx: INTEGER): INTEGER;
-VAR w: INTEGER;
-BEGIN
-  IF (enemyIdx < 1) OR (enemyIdx >= actorCount) THEN RETURN -1 END;
-  IF actors[enemyIdx].state # StDead THEN RETURN -1 END;
-  w := actors[enemyIdx].weapon;
-  IF w <= 0 THEN RETURN -1 END;
-  actors[enemyIdx].weapon := -1;
-  RETURN w
-END SearchBody;
-
 (* --- Main combat update --- *)
 
 PROCEDURE UpdateCombat;

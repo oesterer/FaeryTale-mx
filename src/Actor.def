@@ -61,6 +61,7 @@ TYPE
     race:       INTEGER;
     index:      INTEGER;
     visible:    BOOLEAN;
+    looted:     BOOLEAN;
     weapon:     INTEGER;
     environ:    INTEGER;
     goal:       INTEGER;

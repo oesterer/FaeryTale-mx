@@ -8,6 +8,7 @@ BEGIN
   a.race := 0;
   a.index := 0;
   a.visible := FALSE;
+  a.looted := FALSE;
   a.weapon := 0;
   a.environ := 0;
   a.goal := GoalUser;

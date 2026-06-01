@@ -13,7 +13,7 @@ FROM World IMPORT InitWorld, TileSize, WorldW, WorldH, UpdateCamera,
                   GetTerrain, TerrSwamp, TerrWater, camX, camY;
 FROM Movement IMPORT MoveActor, ProxCheck;
 FROM EnemyAI IMPORT UpdateEnemies;
-FROM Combat IMPORT UpdateCombat, SearchBody, wardTimer;
+FROM Combat IMPORT UpdateCombat, wardTimer;
 FROM Items IMPORT InitItems, CheckPickup, UseItem, InventoryCount,
                   AddToInventory, SpawnItem,
                   ItemNone, ItemGold, ItemFood, ItemPotion,
@@ -321,56 +321,67 @@ BEGIN
   ELSE Assign("a treasure", name) END
 END TreasureName;
 
+PROCEDURE TakeEnemyWeapon(enemyIdx: INTEGER; VAR name: ARRAY OF CHAR): BOOLEAN;
+VAR w: INTEGER;
+BEGIN
+  w := actors[enemyIdx].weapon;
+  IF (w < 1) OR (w > 5) THEN RETURN FALSE END;
+  GiveStuff(w - 1);
+  WeaponName(w, name);
+  IF w > actors[0].weapon THEN actors[0].weapon := w END;
+  IF w = 4 THEN
+    AddStuffN(8, (cycle MOD 8) + 2)
+  END;
+  actors[enemyIdx].weapon := 0;
+  RETURN TRUE
+END TakeEnemyWeapon;
+
+PROCEDURE TakeEnemyTreasure(enemyIdx: INTEGER; VAR name: ARRAY OF CHAR): BOOLEAN;
+VAR race, tg, ti, gv, roll: INTEGER;
+BEGIN
+  IF actors[enemyIdx].looted THEN RETURN FALSE END;
+  actors[enemyIdx].looted := TRUE;
+  race := actors[enemyIdx].race; ti := 0;
+  IF race = 2 THEN
+    (* Wraiths are the main magical supply source: ingredients are
+       frequent, while scrolls are deliberately rare. *)
+    roll := (cycle + actors[enemyIdx].absX + actors[enemyIdx].absY) MOD 20;
+    IF roll < 3 THEN
+      ti := StWardScroll + ((cycle + actors[enemyIdx].absX) MOD 8)
+    ELSE
+      ti := StMandrake + ((cycle + actors[enemyIdx].absY) MOD 6)
+    END
+  ELSIF race < 128 THEN
+    tg := TreasureGroup(race);
+    ti := tg * 8 + (cycle MOD 8);
+    IF (ti >= 0) AND (ti <= 39) THEN ti := treasureProbs[ti] ELSE ti := 0 END
+  END;
+  IF ti <= 0 THEN RETURN FALSE END;
+  IF race = 2 THEN
+    GiveStuff(ti); TreasureName(ti, name)
+  ELSIF ti >= 31 THEN
+    gv := GoldValue(ti); AddWealth(gv);
+    IntToStr(gv, name); Concat(name, " Gold Pieces", name)
+  ELSE
+    GiveStuff(ti); TreasureName(ti, name)
+  END;
+  RETURN TRUE
+END TakeEnemyTreasure;
+
 PROCEDURE SearchNearbyCorpses;
-VAR i, dx, dy, w, race, tg, ti, gv, roll: INTEGER;
+VAR i, dx, dy: INTEGER;
     wname, tname: ARRAY [0..31] OF CHAR;
     hasWeapon, hasTreasure: BOOLEAN;
 BEGIN
   FOR i := 1 TO actorCount - 1 DO
-    IF actors[i].state = StDead THEN
+    IF (actors[i].actorType = TypeEnemy) AND (actors[i].state = StDead) THEN
       dx := actors[0].absX - actors[i].absX;
       dy := actors[0].absY - actors[i].absY;
       IF dx < 0 THEN dx := -dx END;
       IF dy < 0 THEN dy := -dy END;
       IF (dx < 20) AND (dy < 20) THEN
-        IF actors[i].tactic = -1 THEN
-          ShowMessage("% searched the body and found nothing."); RETURN
-        END;
-        hasWeapon := FALSE; hasTreasure := FALSE;
-        w := SearchBody(i);
-        IF (w >= 1) AND (w <= 5) THEN
-          GiveStuff(w - 1);  (* weaponIdx 1-5 → stuff[0-4] *)
-          WeaponName(w, wname); hasWeapon := TRUE;
-          IF w > actors[0].weapon THEN actors[0].weapon := w END;
-          (* Bow loot: also gives rand(8)+2 arrows *)
-          IF w = 4 THEN
-            AddStuffN(8, (cycle MOD 8) + 2)
-          END
-        END;
-        race := actors[i].race; ti := 0;
-        IF race = 2 THEN
-          (* Wraiths are the main magical supply source: ingredients are
-             frequent, while scrolls are deliberately rare. *)
-          roll := (cycle + actors[i].absX + actors[i].absY) MOD 20;
-          IF roll < 3 THEN
-            ti := StWardScroll + ((cycle + actors[i].absX) MOD 8)
-          ELSE
-            ti := StMandrake + ((cycle + actors[i].absY) MOD 6)
-          END
-        ELSIF race < 128 THEN
-          tg := TreasureGroup(race);
-          ti := tg * 8 + (cycle MOD 8);
-          IF (ti >= 0) AND (ti <= 39) THEN ti := treasureProbs[ti] ELSE ti := 0 END
-        END;
-        IF ti > 0 THEN
-          hasTreasure := TRUE;
-          IF (race = 2) THEN
-            GiveStuff(ti); TreasureName(ti, tname)
-          ELSIF ti >= 31 THEN
-            gv := GoldValue(ti); AddWealth(gv);
-            IntToStr(gv, tname); Concat(tname, " Gold Pieces", tname)
-          ELSE GiveStuff(ti); TreasureName(ti, tname) END
-        END;
+        hasWeapon := TakeEnemyWeapon(i, wname);
+        hasTreasure := TakeEnemyTreasure(i, tname);
         Assign("% searched the body and found ", msgBuf);
         IF hasWeapon THEN
           Concat(msgBuf, wname, msgBuf);
@@ -379,7 +390,6 @@ BEGIN
         ELSE Concat(msgBuf, "nothing", msgBuf) END;
         Concat(msgBuf, ".", msgBuf);
         ShowMessage(msgBuf);
-        actors[i].tactic := -1;
         SetOptions; RETURN
       END
     END
@@ -747,6 +757,7 @@ END FrightenNearbyEnemies;
 PROCEDURE HarvestNearby;
 VAR i, id, dx, dy, count: INTEGER;
     picked: BOOLEAN;
+    itemName: ARRAY [0..31] OF CHAR;
 BEGIN
   count := 0;
   FOR i := 0 TO objCount - 1 DO
@@ -792,6 +803,19 @@ BEGIN
       END
     END
   END;
+  FOR i := 1 TO actorCount - 1 DO
+    IF actors[i].actorType = TypeEnemy THEN
+      dx := actors[i].absX - actors[0].absX;
+      dy := actors[i].absY - actors[0].absY;
+      IF dx < 0 THEN dx := -dx END;
+      IF dy < 0 THEN dy := -dy END;
+      IF (dx < 100) AND (dy < 100) THEN
+        IF TakeEnemyWeapon(i, itemName) THEN INC(count) END;
+        IF TakeEnemyTreasure(i, itemName) THEN INC(count) END
+      END
+    END
+  END;
+  SetOptions;
   IntToStr(count, nameBuf);
   Assign("Harvest gathered ", msgBuf);
   Concat(msgBuf, nameBuf, msgBuf);
