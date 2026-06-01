@@ -57,7 +57,7 @@ BEGIN
   InitMenuDef(menus[MKeys],  LabKeys,  11, 8);
   InitMenuDef(menus[MGive],  LabGive,   9, 10);
   InitMenuDef(menus[MUse],   LabUse,   14, 8);
-  InitMenuDef(menus[MFile],  LabFile,  10, 5);
+  InitMenuDef(menus[MFile],  LabFile,  13, 5);
   InitMenuDef(menus[MSell],  LabSell,   7, 10);
 
   (* Items: tabs displayed+selectable, sub-options displayed *)
@@ -133,8 +133,8 @@ BEGIN
   FOR i := 0 TO 11 DO SetEnabled(menus[MUse], i, 10) END;
   SetEnabled(menus[MUse], 9, 0);
 
-  (* File: {10,10,10,10,10, 10,10,10,0,0,0,0} *)
-  FOR i := 0 TO 7 DO SetEnabled(menus[MFile], i, 10) END;
+  (* File: 5-12 = slots A-H *)
+  FOR i := 5 TO 12 DO SetEnabled(menus[MFile], i, 10) END;
 
   (* Sell: 5=Apple, 6=Grey key *)
   SetEnabled(menus[MSell], 5, 8);

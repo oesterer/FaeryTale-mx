@@ -61,6 +61,8 @@ PROCEDURE LoadObjectSprites;
 PROCEDURE DrawWorldObjects;
 PROCEDURE CheckObjectPickup(heroX, heroY: INTEGER): INTEGER;
 PROCEDURE DistributeRegion(region: INTEGER);
+PROCEDURE IsRegionDistributed(region: INTEGER): BOOLEAN;
+PROCEDURE SetRegionDistributed(region: INTEGER; value: BOOLEAN);
 PROCEDURE LeaveItem(x, y, id: INTEGER);
 
 END WorldObj.

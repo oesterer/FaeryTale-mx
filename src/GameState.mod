@@ -756,12 +756,23 @@ BEGIN
       ELSIF optIdx = 6 THEN
         running := FALSE  (* Exit *)
       ELSE GoMenu(0) END |
-    9: (* File menu: slots A-H = optIdx 0-7 *)
-      IF (optIdx >= 0) AND (optIdx <= 7) THEN
+    9: (* File menu: slots A-H = optIdx 5-12 *)
+      IF (optIdx >= 5) AND (optIdx <= 12) THEN
         IF saveMode THEN
-          IF SaveGame(optIdx) THEN END
+          SaveBrotherState;
+          IF SaveGame(optIdx - 5, dayNight, fatigue, hunger, cycle,
+                      lightTimer, secretTimer, freezeTimer) THEN END
         ELSE
-          IF LoadGame(optIdx) THEN END
+          IF LoadGame(optIdx - 5, dayNight, fatigue, hunger, cycle,
+                      lightTimer, secretTimer, freezeTimer) THEN
+            dayPeriod := dayNight DIV 2000;
+            viewStatus := ViewNormal;
+            battleFlag := FALSE;
+            prevBattle := FALSE;
+            aftermathDone := FALSE;
+            revealHidden := (secretTimer > 0);
+            SetOptions
+          END
         END
       END;
       GoMenu(0) |

@@ -3,7 +3,12 @@ DEFINITION MODULE Quest;
 PROCEDURE CheckRescue(heroX, heroY: INTEGER);
 PROCEDURE CheckWinCondition(): BOOLEAN;
 PROCEDURE ShowWinScreen;
-PROCEDURE SaveGame(slot: INTEGER): BOOLEAN;
-PROCEDURE LoadGame(slot: INTEGER): BOOLEAN;
+PROCEDURE SaveGame(slot, savedDayNight, savedFatigue, savedHunger,
+                   savedCycle, savedLightTimer, savedSecretTimer,
+                   savedFreezeTimer: INTEGER): BOOLEAN;
+PROCEDURE LoadGame(slot: INTEGER;
+                   VAR savedDayNight, savedFatigue, savedHunger,
+                       savedCycle, savedLightTimer, savedSecretTimer,
+                       savedFreezeTimer: INTEGER): BOOLEAN;
 
 END Quest.

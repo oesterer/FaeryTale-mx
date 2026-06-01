@@ -8,7 +8,8 @@ FROM Brothers IMPORT brothers, activeBrother, AddWealth;
 FROM Assets IMPORT currentRegion, SwitchRegion, DetectRegion, GetTerrainAt;
 FROM Narration IMPORT InitPlace;
 FROM NPC IMPORT ResetMaterialized;
-FROM WorldObj IMPORT objects, objCount;
+FROM WorldObj IMPORT objects, objCount, MaxWorldObjs,
+                     IsRegionDistributed, SetRegionDistributed;
 FROM Doors IMPORT GetUnlockedCount, GetUnlockedDoor,
                   ClearUnlockedDoors, AddUnlockedDoor;
 FROM HudLog IMPORT AddLogLine;
@@ -69,6 +70,22 @@ END CheckWinCondition;
 
 PROCEDURE MakePath(slot: INTEGER; VAR path: ARRAY OF CHAR);
 BEGIN
+  CASE slot OF
+    0: Assign("A", path) |
+    1: Assign("B", path) |
+    2: Assign("C", path) |
+    3: Assign("D", path) |
+    4: Assign("E", path) |
+    5: Assign("F", path) |
+    6: Assign("G", path) |
+    7: Assign("H", path)
+  ELSE
+    Assign("X", path)
+  END
+END MakePath;
+
+PROCEDURE MakeLegacyPath(slot: INTEGER; VAR path: ARRAY OF CHAR);
+BEGIN
   Assign("saves/save_", path);
   CASE slot OF
     0: Concat(path, "A.dat", path) |
@@ -82,7 +99,7 @@ BEGIN
   ELSE
     Concat(path, "X.dat", path)
   END
-END MakePath;
+END MakeLegacyPath;
 
 (* Serialize/deserialize integers as 4 little-endian bytes.
    Avoids ADR() which the C backend rejects. *)
@@ -118,10 +135,12 @@ BEGIN
   b := (v # 0)
 END ReadBool4;
 
-PROCEDURE SaveGame(slot: INTEGER): BOOLEAN;
+PROCEDURE SaveGame(slot, savedDayNight, savedFatigue, savedHunger,
+                   savedCycle, savedLightTimer, savedSecretTimer,
+                   savedFreezeTimer: INTEGER): BOOLEAN;
 VAR path: ARRAY [0..63] OF CHAR;
     fd: CARDINAL;
-    i, v, k, px, py, region: INTEGER;
+    i, k, px, py, region: INTEGER;
     buf: ARRAY [0..3] OF CHAR;
 BEGIN
   MakePath(slot, path);
@@ -134,7 +153,7 @@ BEGIN
   END;
 
   (* Header *)
-  buf[0] := 'F'; buf[1] := 'T'; buf[2] := 'A'; buf[3] := '1';
+  buf[0] := 'F'; buf[1] := 'T'; buf[2] := 'A'; buf[3] := '2';
   WriteBytes(fd, buf, 4);
 
   (* Active brother *)
@@ -173,33 +192,63 @@ BEGIN
     WriteInt4(fd, region)
   END;
 
+  (* Runtime state *)
+  WriteInt4(fd, savedDayNight);
+  WriteInt4(fd, savedFatigue);
+  WriteInt4(fd, savedHunger);
+  WriteInt4(fd, savedCycle);
+  WriteInt4(fd, savedLightTimer);
+  WriteInt4(fd, savedSecretTimer);
+  WriteInt4(fd, savedFreezeTimer);
+  WriteBool4(fd, gameWon);
+
+  (* Exact world object state, including collected items and scattered apples. *)
+  WriteInt4(fd, objCount);
+  FOR i := 0 TO objCount - 1 DO
+    WriteInt4(fd, objects[i].x);
+    WriteInt4(fd, objects[i].y);
+    WriteInt4(fd, objects[i].objId);
+    WriteInt4(fd, objects[i].status);
+    WriteInt4(fd, objects[i].region)
+  END;
+  FOR i := 0 TO 9 DO WriteBool4(fd, IsRegionDistributed(i)) END;
+
   Close(fd);
   AddLogLine("Game saved.");
   WriteString("Quest: saved to "); WriteString(path); WriteLn;
   RETURN TRUE
 END SaveGame;
 
-PROCEDURE LoadGame(slot: INTEGER): BOOLEAN;
+PROCEDURE LoadGame(slot: INTEGER;
+                   VAR savedDayNight, savedFatigue, savedHunger,
+                       savedCycle, savedLightTimer, savedSecretTimer,
+                       savedFreezeTimer: INTEGER): BOOLEAN;
 VAR path: ARRAY [0..63] OF CHAR;
     fd: CARDINAL;
-    n, i, v, k, px, py, region: INTEGER;
+    n, i, v, k, px, py, region, version: INTEGER;
+    distributed: BOOLEAN;
     buf: ARRAY [0..3] OF CHAR;
 BEGIN
   MakePath(slot, path);
   OpenRead(path, fd);
   IF fd = 0 THEN
-    AddLogLine("No save file found.");
-    RETURN FALSE
+    MakeLegacyPath(slot, path);
+    OpenRead(path, fd);
+    IF fd = 0 THEN
+      AddLogLine("No save file found.");
+      RETURN FALSE
+    END
   END;
 
   (* Verify header *)
   ReadBytes(fd, buf, 4, n);
   IF (n < 4) OR (buf[0] # 'F') OR (buf[1] # 'T') OR
-     (buf[2] # 'A') OR (buf[3] # '1') THEN
+     (buf[2] # 'A') OR ((buf[3] # '1') AND (buf[3] # '2')) THEN
     AddLogLine("Invalid save file.");
     Close(fd);
     RETURN FALSE
   END;
+  version := ORD(buf[3]) - ORD('0');
 
   (* Active brother *)
   ReadInt4(fd, v);
@@ -243,6 +292,33 @@ BEGIN
     ReadInt4(fd, py);
     ReadInt4(fd, region);
     AddUnlockedDoor(px, py, region)
+  END;
+
+  IF version >= 2 THEN
+    ReadInt4(fd, savedDayNight);
+    ReadInt4(fd, savedFatigue);
+    ReadInt4(fd, savedHunger);
+    ReadInt4(fd, savedCycle);
+    ReadInt4(fd, savedLightTimer);
+    ReadInt4(fd, savedSecretTimer);
+    ReadInt4(fd, savedFreezeTimer);
+    ReadBool4(fd, gameWon);
+
+    ReadInt4(fd, v);
+    IF v < 0 THEN v := 0 END;
+    IF v > MaxWorldObjs THEN v := MaxWorldObjs END;
+    objCount := v;
+    FOR i := 0 TO objCount - 1 DO
+      ReadInt4(fd, objects[i].x);
+      ReadInt4(fd, objects[i].y);
+      ReadInt4(fd, objects[i].objId);
+      ReadInt4(fd, objects[i].status);
+      ReadInt4(fd, objects[i].region)
+    END;
+    FOR i := 0 TO 9 DO
+      ReadBool4(fd, distributed);
+      SetRegionDistributed(i, distributed)
+    END
   END;
 
   Close(fd);

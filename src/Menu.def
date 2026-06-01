@@ -8,7 +8,7 @@ CONST
   MSave  = 5;  MKeys  = 6;  MGive  = 7;  MUse   = 8;  MFile  = 9;
   MSell  = 10;
 
-  MaxOpts = 12;
+  MaxOpts = 14;
 
   (* Menu panel layout in 640x57 HUD space *)
   PanelX = 430;
@@ -18,10 +18,10 @@ CONST
 
 TYPE
   MenuDef = RECORD
-    labels: ARRAY [0..59] OF CHAR;  (* up to 12 options, 5 chars each *)
+    labels: ARRAY [0..69] OF CHAR;  (* up to 14 options, 5 chars each *)
     num:    INTEGER;                 (* total slots including tabs *)
     color:  INTEGER;                 (* palette color index *)
-    enabled: ARRAY [0..11] OF INTEGER
+    enabled: ARRAY [0..13] OF INTEGER
       (* bit0=selected, bit1=displayed, bits2-7=type:
          4=toggle, 8=immediate, 12=radio, 0=fixed *)
   END;

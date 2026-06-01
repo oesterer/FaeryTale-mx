@@ -317,6 +317,18 @@ BEGIN
   AddRegionApples(region)
 END DistributeRegion;
 
+PROCEDURE IsRegionDistributed(region: INTEGER): BOOLEAN;
+BEGIN
+  IF (region < 0) OR (region > 9) THEN RETURN FALSE END;
+  RETURN distributed[region]
+END IsRegionDistributed;
+
+PROCEDURE SetRegionDistributed(region: INTEGER; value: BOOLEAN);
+BEGIN
+  IF (region < 0) OR (region > 9) THEN RETURN END;
+  distributed[region] := value
+END SetRegionDistributed;
+
 (* --- Leave item on ground — original leave_item, uses ob_listg[0] slot ---
    Places a single object at given coordinates as a ground item. *)
 
