@@ -35,7 +35,7 @@ FROM Assets IMPORT InitAssets, PreloadAll, LoadHUD, currentRegion,
                    GetTerrainAt, GetSectorByte, GetMapSector;
 FROM Menu IMPORT HandleMenuKey, SetOptions, cmode, menus, realOptions,
                  optionCount, MItems, MBuy, MGive, MGame, MSave, MFile, MSell,
-                 MSpells,
+                 MSpells, MStudy, MHerbs,
                  GoMenu,
                  PanelX, PanelY, BtnW, BtnH;
 FROM Music IMPORT SetMood, StopMusic, ResumeMusic, IsPlaying,
@@ -632,7 +632,10 @@ PROCEDURE HandleMagic(optIdx: INTEGER);
 VAR itemIdx, si, v: INTEGER;
     used: BOOLEAN;
 BEGIN
-  IF optIdx = 12 THEN GoMenu(MSpells); RETURN END;
+  IF optIdx = 12 THEN GoMenu(MSpells); RETURN
+  ELSIF optIdx = 13 THEN GoMenu(MStudy); RETURN
+  ELSIF optIdx = 14 THEN GoMenu(MHerbs); RETURN
+  END;
   itemIdx := optIdx - 5;  (* 0=Stone,1=Jewel,2=Vial,3=Orb,4=Totem,5=Ring,6=Skull *)
   IF (itemIdx < 0) OR (itemIdx > 6) THEN RETURN END;
   si := 9 + itemIdx;  (* stuff[9..15] *)
@@ -723,6 +726,39 @@ BEGIN
   SetOptions;
   GoMenu(0)
 END HandleSpell;
+
+PROCEDURE HandleStudy(optIdx: INTEGER);
+BEGIN
+  CASE optIdx OF
+    5: ShowMessage("Heal: 1 Mandrake. Restores 20 health.") |
+    6: ShowMessage("Kill: 2 Bloodroot. Kills weaker enemies.") |
+    7: ShowMessage("Home: 2 Yarrow. Returns you to the starting point.")
+  ELSE
+  END
+END HandleStudy;
+
+PROCEDURE ShowHerbCount(name: ARRAY OF CHAR; stuffIdx: INTEGER);
+VAR numStr: ARRAY [0..15] OF CHAR;
+BEGIN
+  Assign(name, msgBuf);
+  Concat(msgBuf, ": ", msgBuf);
+  IntToStr(brothers[activeBrother].stuff[stuffIdx], numStr);
+  Concat(msgBuf, numStr, msgBuf);
+  ShowMessage(msgBuf)
+END ShowHerbCount;
+
+PROCEDURE HandleHerbs(optIdx: INTEGER);
+BEGIN
+  CASE optIdx OF
+     5: ShowHerbCount("Mandrake", StMandrake) |
+     6: ShowHerbCount("Wolfsbane", StWolfsbane) |
+     7: ShowHerbCount("Mugwort", StMugwort) |
+     8: ShowHerbCount("Yarrow", StYarrow) |
+     9: ShowHerbCount("Nightshade", StNightshade) |
+    10: ShowHerbCount("Bloodroot", StBloodroot)
+  ELSE
+  END
+END HandleHerbs;
 
 PROCEDURE HandleCamp;
 BEGIN
@@ -839,7 +875,9 @@ BEGIN
       END;
       GoMenu(0) |
    10: HandleSell(optIdx) |
-   11: HandleSpell(optIdx)
+   11: HandleSpell(optIdx) |
+   12: HandleStudy(optIdx) |
+   13: HandleHerbs(optIdx)
   ELSE END
 END HandleMenuClick;
 

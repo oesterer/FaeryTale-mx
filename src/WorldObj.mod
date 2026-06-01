@@ -11,6 +11,7 @@ FROM InOut IMPORT WriteString, WriteInt, WriteLn;
 CONST
   ObjSprW = 16;
   ObjSprH = 16;
+  ObjSheetH = 2000;
 
 PROCEDURE S(v: INTEGER): INTEGER;
 BEGIN RETURN v * Scale END S;
@@ -385,10 +386,8 @@ BEGIN
            and render from the bottom half (+8 offset, 8px tall).
            Same frame is shared — top half is one object, bottom half another. *)
         id := objects[i].objId;
-        IF (id >= ObjMandrake) AND (id <= ObjBloodroot) THEN
-          sprY := ObjUrn * ObjSprH
-        ELSIF (id >= ObjHealScroll) AND (id <= ObjHomeScroll) THEN
-          sprY := ObjChest * ObjSprH
+        IF (id >= ObjMandrake) AND (id <= ObjHomeScroll) THEN
+          sprY := (116 + id - ObjMandrake) * ObjSprH
         ELSIF BAND(CARDINAL(id), 128) # 0 THEN
           sprY := INTEGER(BAND(CARDINAL(id), 127)) * ObjSprH + 8
         ELSE
@@ -405,7 +404,7 @@ BEGIN
             ((id < ObjMandrake) OR (id > ObjHomeScroll))) THEN
           ht := 8
         END;
-        IF sprY + ht <= 1856 THEN
+        IF sprY + ht <= ObjSheetH THEN
           DrawTexRegion(objTex,
                         0, sprY, ObjSprW, ht,
                         sx - S(8), sy - S(ht DIV 2),

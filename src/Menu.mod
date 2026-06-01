@@ -17,7 +17,7 @@ CONST
   LabTalk  = "Yell Say  Ask  ";
   LabGame  = "PauseMusicSoundQuit Load ";
   LabBuy   = "Food ArrowVial Mace SwordBow  Totem";
-  LabMagic = "StoneJewelVial Orb  TotemRing SkullSpell";
+  LabMagic = "StoneJewelVial Orb  TotemRing SkullSpellStudyHerbs";
   LabUse   = "Dirk Mace SwordBow  Wand LassoShellKey  Sun  Book ";
   LabSave  = "Save Exit ";
   LabKeys  = "Gold GreenBlue Red  Grey White";
@@ -25,6 +25,8 @@ CONST
   LabFile  = "  A    B    C    D    E    F    G    H  ";
   LabSell  = "AppleGrey ";
   LabSpells = "Heal Kill Home ";
+  LabStudy = "Heal Kill Home ";
+  LabHerbs = "MandrWolfsMugwtYarroNightBlood";
 
 PROCEDURE InitMenuDef(VAR m: MenuDef; lab: ARRAY OF CHAR;
                        n, col: INTEGER);
@@ -51,7 +53,7 @@ BEGIN
   cmode := MItems;
 
   InitMenuDef(menus[MItems], LabItems, 12, 6);
-  InitMenuDef(menus[MMagic], LabMagic, 13, 5);
+  InitMenuDef(menus[MMagic], LabMagic, 15, 5);
   InitMenuDef(menus[MTalk],  LabTalk,   8, 9);
   InitMenuDef(menus[MBuy],   LabBuy,   12, 10);
   InitMenuDef(menus[MGame],  LabGame,  10, 2);
@@ -62,6 +64,8 @@ BEGIN
   InitMenuDef(menus[MFile],  LabFile,  13, 5);
   InitMenuDef(menus[MSell],  LabSell,   7, 10);
   InitMenuDef(menus[MSpells], LabSpells, 8, 5);
+  InitMenuDef(menus[MStudy],  LabStudy,  8, 5);
+  InitMenuDef(menus[MHerbs],  LabHerbs, 11, 6);
 
   (* Items: tabs displayed+selectable, sub-options displayed *)
   SetEnabled(menus[MItems], 0, 3);  (* Items - selected *)
@@ -107,6 +111,8 @@ BEGIN
   SetEnabled(menus[MMagic], 4, 2);
   FOR i := 5 TO 11 DO SetEnabled(menus[MMagic], i, 8) END;
   SetEnabled(menus[MMagic], 12, 10);
+  SetEnabled(menus[MMagic], 13, 10);
+  SetEnabled(menus[MMagic], 14, 10);
 
   (* Save *)
   SetEnabled(menus[MSave], 0, 2);
@@ -148,6 +154,14 @@ BEGIN
   SetEnabled(menus[MSpells], 5, 0);
   SetEnabled(menus[MSpells], 6, 0);
   SetEnabled(menus[MSpells], 7, 0);
+
+  (* Study: entries are shown once their scroll has been collected. *)
+  SetEnabled(menus[MStudy], 5, 0);
+  SetEnabled(menus[MStudy], 6, 0);
+  SetEnabled(menus[MStudy], 7, 0);
+
+  (* Herbs: always list each magical ingredient. *)
+  FOR i := 5 TO 10 DO SetEnabled(menus[MHerbs], i, 10) END;
 
   cmode := MItems;
   BuildOptions  (* just build initial options without reading inventory *)
@@ -227,6 +241,8 @@ BEGIN
     menus[MMagic].enabled[i + 5] := SF(i + 9)
   END;
   menus[MMagic].enabled[12] := 10;
+  menus[MMagic].enabled[13] := 10;
+  menus[MMagic].enabled[14] := 10;
 
   IF HasStuff(StHealScroll) THEN menus[MSpells].enabled[5] := 10
   ELSE menus[MSpells].enabled[5] := 0 END;
@@ -234,6 +250,13 @@ BEGIN
   ELSE menus[MSpells].enabled[6] := 0 END;
   IF HasStuff(StHomeScroll) THEN menus[MSpells].enabled[7] := 10
   ELSE menus[MSpells].enabled[7] := 0 END;
+
+  IF HasStuff(StHealScroll) THEN menus[MStudy].enabled[5] := 10
+  ELSE menus[MStudy].enabled[5] := 0 END;
+  IF HasStuff(StKillScroll) THEN menus[MStudy].enabled[6] := 10
+  ELSE menus[MStudy].enabled[6] := 0 END;
+  IF HasStuff(StHomeScroll) THEN menus[MStudy].enabled[7] := 10
+  ELSE menus[MStudy].enabled[7] := 0 END;
 
   (* KEYS: 5-10 = stuff[16-21] *)
   FOR i := 0 TO 5 DO
@@ -259,7 +282,7 @@ END SetOptions;
 
 PROCEDURE GoMenu(mode: INTEGER);
 BEGIN
-  IF (mode < 0) OR (mode > 11) THEN RETURN END;
+  IF (mode < 0) OR (mode > 13) THEN RETURN END;
   cmode := mode;
   SetOptions
 END GoMenu;

@@ -1,14 +1,14 @@
 DEFINITION MODULE Menu;
 
 (* Menu system matching the original Faery Tale Adventure.
-   12 menu modes with 2-column option layout. *)
+   14 menu modes with 2-column option layout. *)
 
 CONST
   MItems = 0;  MMagic = 1;  MTalk  = 2;  MBuy   = 3;  MGame  = 4;
   MSave  = 5;  MKeys  = 6;  MGive  = 7;  MUse   = 8;  MFile  = 9;
-  MSell  = 10;  MSpells = 11;
+  MSell  = 10;  MSpells = 11;  MStudy = 12;  MHerbs = 13;
 
-  MaxOpts = 14;
+  MaxOpts = 15;
 
   (* Menu panel layout in 640x57 HUD space *)
   PanelX = 430;
@@ -18,17 +18,17 @@ CONST
 
 TYPE
   MenuDef = RECORD
-    labels: ARRAY [0..69] OF CHAR;  (* up to 14 options, 5 chars each *)
+    labels: ARRAY [0..74] OF CHAR;  (* up to 15 options, 5 chars each *)
     num:    INTEGER;                 (* total slots including tabs *)
     color:  INTEGER;                 (* palette color index *)
-    enabled: ARRAY [0..13] OF INTEGER
+    enabled: ARRAY [0..14] OF INTEGER
       (* bit0=selected, bit1=displayed, bits2-7=type:
          4=toggle, 8=immediate, 12=radio, 0=fixed *)
   END;
 
 VAR
   cmode: INTEGER;                     (* current menu mode *)
-  menus: ARRAY [0..11] OF MenuDef;
+  menus: ARRAY [0..13] OF MenuDef;
   realOptions: ARRAY [0..11] OF INTEGER;  (* visible option indices *)
   optionCount: INTEGER;               (* number of visible options *)
 
