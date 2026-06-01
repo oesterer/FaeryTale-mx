@@ -15,9 +15,10 @@ FROM InOut IMPORT WriteString, WriteInt, WriteLn;
 
 CONST
   MaxTry = 10;
-  MaxEncounterActors = 7;  (* original anix < 7: slots 0-6 *)
+  MaxEncounterActors = 34;  (* original anix < 7: slots 0-6 *)
   EnemySlotStart = 4;     (* enemies in slots 4-6, skip player/raft/setfig/carrier *)
-  MaxEnemies = 3;          (* max 3 enemies at once in slots 4-6 *)
+  MaxEnemies = 30;          (* max 3 enemies at once in slots 4-6 *)
+  EncounterChanceMultiplier = 20;  (* increase ordinary random encounter rate *)
 
 TYPE
   EncounterRec = RECORD
@@ -508,6 +509,8 @@ BEGIN
   ELSE
     dangerLevel := 2 + et
   END;
+  dangerLevel := dangerLevel * EncounterChanceMultiplier;
+  IF dangerLevel > 63 THEN dangerLevel := 63 END;
   (* Original: rand64() <= danger_level — low roll = spawn *)
   IF Rand(64) > dangerLevel THEN RETURN END;
 

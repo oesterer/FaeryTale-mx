@@ -6,7 +6,7 @@ IMPLEMENTATION MODULE NPC;
 FROM Strings IMPORT Assign;
 FROM Actor IMPORT actors, actorCount, MaxActors,
                   TypeSetfig, StStill, StDead, GoalWait, GoalStand;
-FROM WorldObj IMPORT objects, objCount, AddObj;
+FROM WorldObj IMPORT objects, objCount, AddObj, MaxWorldObjs;
 FROM Assets IMPORT currentRegion;
 FROM Brothers IMPORT brothers, activeBrother,
                     StWrit, StBone, StShard, StStatue, StSunStone,
@@ -20,10 +20,10 @@ TYPE
   END;
 
 VAR
-  sfTable: ARRAY [0..13] OF SetfigDef;
+  sfTable: ARRAY [0..14] OF SetfigDef;
 
   (* Track which WorldObj indices are currently materialized as actors *)
-  materialized: ARRAY [0..199] OF BOOLEAN;
+  materialized: ARRAY [0..MaxWorldObjs - 1] OF BOOLEAN;
 
   (* One-time reward flags *)
   priestStatueGiven:    BOOLEAN;
@@ -50,12 +50,14 @@ BEGIN
   sfTable[10].spriteBank := 3; sfTable[10].imageBase := 6; sfTable[10].canTalk := FALSE;
   sfTable[11].spriteBank := 3; sfTable[11].imageBase := 7; sfTable[11].canTalk := FALSE;
   sfTable[12].spriteBank := 4; sfTable[12].imageBase := 0; sfTable[12].canTalk := TRUE;
-  sfTable[13].spriteBank := 4; sfTable[13].imageBase := 4; sfTable[13].canTalk := TRUE
+  sfTable[13].spriteBank := 4; sfTable[13].imageBase := 4; sfTable[13].canTalk := TRUE;
+  (* Prayer skeletons render from the enemy sprite sheet in Render.mod. *)
+  sfTable[14].spriteBank := 0; sfTable[14].imageBase := 0; sfTable[14].canTalk := TRUE
 END InitSetfigTable;
 
 PROCEDURE GetSetfigSprite(race: INTEGER; VAR bank, frame: INTEGER);
 BEGIN
-  IF (race >= 0) AND (race <= 13) THEN
+  IF (race >= 0) AND (race < MaxNPCs) THEN
     bank := sfTable[race].spriteBank;
     frame := sfTable[race].imageBase
   ELSE
@@ -129,7 +131,8 @@ BEGIN
   Assign('"Just hop on my back if you need a ride somewhere." said the turtle.', speeches[57]);
   Assign("Stupid fool, you can't hurt me with that!", speeches[58]);
   Assign("Your magic won't work here, fool!", speeches[59]);
-  Assign("The Sunstone has made the witch vulnerable!", speeches[60])
+  Assign("The Sunstone has made the witch vulnerable!", speeches[60]);
+  Assign('"Ohm Ohm!"', speeches[61])
 END InitSpeeches;
 
 (* --- Materialization --- *)
@@ -152,7 +155,7 @@ BEGIN
           IF actorCount < MaxActors THEN
             idx := actorCount;
             race := objects[i].objId;
-            IF race > 13 THEN race := 0 END;  (* clamp to setfig table *)
+            IF race >= MaxNPCs THEN race := 0 END;  (* clamp to setfig table *)
             actors[idx].absX := objects[i].x;
             actors[idx].absY := objects[i].y;
             actors[idx].actorType := TypeSetfig;
@@ -222,7 +225,8 @@ BEGIN
    10: Assign("a spectre", name) |
    11: Assign("a ghost", name) |
    12: Assign("a ranger", name) |
-   13: Assign("a beggar", name)
+   13: Assign("a beggar", name) |
+   14: Assign("a praying skeleton", name)
   ELSE
     Assign("someone", name)
   END
@@ -299,7 +303,8 @@ BEGIN
       IF currentRegion = 2 THEN RETURN 22
       ELSE RETURN 53 + (goal MOD 3)
       END |
-   13:  RETURN 23      (* beggar *)
+   13:  RETURN 23 |    (* beggar *)
+   14:  RETURN 61      (* praying skeleton *)
   ELSE
     RETURN 49
   END
@@ -374,7 +379,7 @@ END GetSpeech;
 PROCEDURE ResetMaterialized;
 VAR i: INTEGER;
 BEGIN
-  FOR i := 0 TO 199 DO materialized[i] := FALSE END
+  FOR i := 0 TO MaxWorldObjs - 1 DO materialized[i] := FALSE END
 END ResetMaterialized;
 
 PROCEDURE InitNPCs;

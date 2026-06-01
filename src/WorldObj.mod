@@ -72,6 +72,21 @@ BEGIN
   AddObj(25769, 10617, 13, 1, 3);    (* money *)
   AddObj(25678, 10703, 18, 1, 3);    (* blue stone *)
   AddObj(17177, 10599, 20, 1, 3);    (* scrap *)
+  AddObj(19026, 15750, 148, 1, 3);   (* starting fruit stash *)
+  AddObj(19031, 15750, 148, 1, 3);
+  AddObj(19036, 15750, 148, 1, 3);
+  AddObj(19041, 15750, 148, 1, 3);
+  AddObj(19046, 15750, 148, 1, 3);
+  AddObj(19026, 15755, 148, 1, 3);
+  AddObj(19031, 15755, 148, 1, 3);
+  AddObj(19036, 15755, 148, 1, 3);
+  AddObj(19041, 15755, 148, 1, 3);
+  AddObj(19046, 15755, 148, 1, 3);
+  (* Prayer skeletons around the nearby stone circle at sector (84, 60). *)
+  AddObj(21480, 15360, 14, 3, 3);
+  AddObj(21528, 15360, 14, 3, 3);
+  AddObj(21504, 15336, 14, 3, 3);
+  AddObj(21504, 15384, 14, 3, 3);
 
   (* === Region 4 — Desert === *)
   AddObj( 6817, 19693, 13, 3, 4);    (* beggar *)
@@ -208,6 +223,9 @@ END LoadObjectSprites;
    rand_treasure = {SACKS×4, CHEST, MONEY, GOLD_KEY, QUIVER,
                     GREY_KEY×3, RED_KEY, B_TOTEM, VIAL, WHITE_KEY, CHEST} *)
 
+CONST
+  ApplesPerOutdoorRegion = 125;  (* 8 outdoor regions = 1000 apples *)
+
 VAR
   rng: INTEGER;
   distributed: ARRAY [0..9] OF BOOLEAN;
@@ -245,6 +263,35 @@ BEGIN
   END
 END RandTreasureId;
 
+PROCEDURE NearTree(x, y: INTEGER): BOOLEAN;
+BEGIN
+  RETURN (GetTerrainAt(x - 16, y) = 15) OR
+         (GetTerrainAt(x + 16, y) = 15) OR
+         (GetTerrainAt(x, y - 16) = 15) OR
+         (GetTerrainAt(x, y + 16) = 15)
+END NearTree;
+
+PROCEDURE AddRegionApples(region: INTEGER);
+VAR i, tries, x, y: INTEGER;
+BEGIN
+  FOR i := 1 TO ApplesPerOutdoorRegion DO
+    tries := 0;
+    REPEAT
+      x := BitRand(16383) + BAND(CARDINAL(region), 1) * 16384;
+      y := BitRand(8191)  + BAND(CARDINAL(region), 6) * 4096;
+      INC(tries)
+    UNTIL ((GetTerrainAt(x, y) = 0) AND NearTree(x, y)) OR
+          (tries >= 64);
+
+    (* Some regions have little forest. Always place the remainder on grass. *)
+    WHILE GetTerrainAt(x, y) # 0 DO
+      x := BitRand(16383) + BAND(CARDINAL(region), 1) * 16384;
+      y := BitRand(8191)  + BAND(CARDINAL(region), 6) * 4096
+    END;
+    AddObj(x, y, ObjFruit, 1, region)
+  END
+END AddRegionApples;
+
 PROCEDURE DistributeRegion(region: INTEGER);
 VAR i, x, y, terrain: INTEGER;
 BEGIN
@@ -266,7 +313,8 @@ BEGIN
       terrain := GetTerrainAt(x, y)
     UNTIL terrain = 0;  (* only on passable land *)
     AddObj(x, y, RandTreasureId(), 1, region)
-  END
+  END;
+  AddRegionApples(region)
 END DistributeRegion;
 
 (* --- Leave item on ground — original leave_item, uses ob_listg[0] slot ---

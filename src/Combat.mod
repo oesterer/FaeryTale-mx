@@ -13,7 +13,7 @@ FROM Movement IMPORT MoveActor;
 FROM InOut IMPORT WriteString, WriteInt, WriteLn;
 
 VAR
-  hitCooldown: ARRAY [0..19] OF INTEGER;  (* per-actor attack timer *)
+  hitCooldown: ARRAY [0..47] OF INTEGER;  (* per-actor attack timer *)
   rng: INTEGER;
 
 PROCEDURE Rand(limit: INTEGER): INTEGER;
@@ -175,6 +175,6 @@ END UpdateCombat;
 
 BEGIN
   rng := 77777;
-  FOR rng := 0 TO 19 DO hitCooldown[rng] := 0 END;
+  FOR rng := 0 TO 47 DO hitCooldown[rng] := 0 END;
   rng := 77777
 END Combat.

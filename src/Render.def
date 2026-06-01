@@ -9,6 +9,7 @@ PROCEDURE DrawHUD;
 PROCEDURE DrawCompass;
 PROCEDURE DrawMenu;
 PROCEDURE DrawMinimap;
+PROCEDURE DrawBirdView;
 PROCEDURE DrawRegionFade;
 PROCEDURE DrawMessage;
 PROCEDURE DrawInventory;

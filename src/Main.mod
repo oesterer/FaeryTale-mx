@@ -4,10 +4,11 @@ FROM InOut IMPORT WriteString, WriteLn;
 FROM Platform IMPORT Init, Shutdown, BeginFrame, EndFrame,
                     GetTicks, DelayMs, ren;
 FROM GameState IMPORT InitGame, UpdateGame, running, FrameTime,
-                      mapToggled, viewStatus;
+                      mapToggled, viewStatus, ViewInventory, ViewBird;
 FROM Render IMPORT InitOverlay, DrawWorld, DrawItems, DrawActors,
                    DrawHUD, DrawMenu, DrawMessage,
-                   DrawInventory, DrawFairy, DrawWitchBeam, LoadCompass;
+                   DrawInventory, DrawBirdView, DrawFairy, DrawWitchBeam,
+                   LoadCompass;
 FROM DebugMap IMPORT InitDebugMap, ToggleDebugMap, UpdateDebugMap;
 FROM Menu IMPORT InitMenus;
 FROM HudFont IMPORT LoadHudFont;
@@ -60,8 +61,10 @@ BEGIN
     IF mapToggled THEN ToggleDebugMap END;
 
     BeginFrame;
-    IF viewStatus = 4 THEN
+    IF viewStatus = ViewInventory THEN
       DrawInventory
+    ELSIF viewStatus = ViewBird THEN
+      DrawBirdView
     ELSE
       DrawWorld;
       DrawWorldObjects;

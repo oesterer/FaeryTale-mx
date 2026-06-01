@@ -28,7 +28,7 @@ FROM Brothers IMPORT activeBrother, brothers, Julian, Philip, Kevin;
 FROM Assets IMPORT tileTex, hudTex, brotherTex, enemyTex, npcTex, dragonTex, shadowPB,
                    currentRegion, GetSectorByte, GetSectorByteForRegion,
                    GetMaskType, GetTilesBits, GetMapTag, DetectRegion,
-                   regions, NumRegions, LoadImgCached, AssetPath;
+                   GetTerrainAt, regions, NumRegions, LoadImgCached, AssetPath;
 FROM PixBuf IMPORT PBuf, GetPix AS PBGetPix;
 FROM Menu IMPORT cmode, menus, realOptions, optionCount, MaxOpts,
                  MItems, MMagic, MTalk, MBuy, MGame, MUse, MFile,
@@ -36,7 +36,7 @@ FROM Menu IMPORT cmode, menus, realOptions, optionCount, MaxOpts,
                  PanelX, PanelY, BtnW, BtnH;
 FROM HudFont IMPORT DrawHudStr, DrawMenuStr;
 FROM WorldObj IMPORT objTex;
-FROM NPC IMPORT GetSetfigSprite;
+FROM NPC IMPORT GetSetfigSprite, PrayerSkeletonRace;
 FROM Carrier IMPORT riding, RideSwan;
 FROM HudLog IMPORT GetLine, GetStatBrv, GetStatLck, GetStatKnd,
                    GetStatWlth, GetStatVit, logDirty, statDirty;
@@ -984,6 +984,13 @@ BEGIN
   IF actors[i].actorType = TypeSetfig THEN
     (* Dead setfigs don't render *)
     IF actors[i].state = StDead THEN RETURN END;
+    IF actors[i].race = PrayerSkeletonRace THEN
+      (* Skeleton NPCs use the odd-race half of the wraith/skeleton sheet. *)
+      frame := GetEnemyFrame(i);
+      IF BAND(CARDINAL(frame), 1) = 0 THEN INC(frame) END;
+      DrawEnemySprite(i, 1, frame, sx, sy);
+      RETURN
+    END;
     GetSetfigSprite(actors[i].race, npcBank, npcFrame);
     (* Witch (race 9): animated — frame = facing / 2. Original line 1993.
        Dying: use last frame. *)
@@ -1092,7 +1099,7 @@ END DrawActorBody;
 
 PROCEDURE DrawActors;
 VAR i, j, sx, sy, n, tmp: INTEGER;
-    order: ARRAY [0..19] OF INTEGER;  (* actor indices sorted by Y *)
+    order: ARRAY [0..47] OF INTEGER;  (* actor indices sorted by Y *)
 BEGIN
   SetClip(ren, 0, 0, S(PlayW), S(PlayH));
 
@@ -1339,6 +1346,91 @@ BEGIN
     END
   END
 END DrawMinimap;
+
+(* ---- Bird Totem region view ---- *)
+
+PROCEDURE BirdTerrainColor(terrain: INTEGER; VAR r, g, b: INTEGER);
+BEGIN
+  CASE terrain OF
+    0:  r := 45;  g := 125; b := 45  |  (* passable ground *)
+    1:  r := 85;  g := 85;  b := 85  |  (* walls *)
+    2:  r := 190; g := 165; b := 100 |  (* roads *)
+    3:  r := 205; g := 190; b := 135 |  (* shores *)
+    5:  r := 35;  g := 90;  b := 180 |  (* water *)
+    8:  r := 80;  g := 105; b := 60  |  (* swamp *)
+    9:  r := 145; g := 135; b := 115 |  (* palace ground *)
+    10: r := 105; g := 90;  b := 70  |  (* rough edges *)
+    15: r := 10;  g := 70;  b := 25     (* forest / doors *)
+  ELSE
+    r := 110; g := 100; b := 90
+  END
+END BirdTerrainColor;
+
+PROCEDURE DrawBirdView;
+CONST
+  MapCols = 128;
+  MapRows = 64;
+  CellSize = 2;
+  SampleSize = 128;
+VAR x, y, i, r, g, b, baseX, baseY, mapX, mapY, px, py: INTEGER;
+BEGIN
+  IF currentRegion < 0 THEN RETURN END;
+
+  IF currentRegion < 8 THEN
+    baseX := (currentRegion MOD 2) * 16384;
+    baseY := (currentRegion DIV 2) * 8192
+  ELSE
+    baseX := 0;
+    baseY := (currentRegion DIV 2) * 8192
+  END;
+  mapX := (PlayW - MapCols * CellSize) DIV 2;
+  mapY := (PlayH - MapRows * CellSize) DIV 2;
+
+  SetColor(ren, 6, 10, 14, 255);
+  FillRect(ren, 0, 0, S(PlayW), S(PlayH));
+  FOR y := 0 TO MapRows - 1 DO
+    FOR x := 0 TO MapCols - 1 DO
+      BirdTerrainColor(GetTerrainAt(baseX + x * SampleSize + SampleSize DIV 2,
+                                    baseY + y * SampleSize + SampleSize DIV 2),
+                       r, g, b);
+      SetColor(ren, r, g, b, 255);
+      FillRect(ren, S(mapX + x * CellSize), S(mapY + y * CellSize),
+               S(CellSize), S(CellSize))
+    END
+  END;
+  SetColor(ren, 190, 200, 205, 255);
+  DrawRect(ren, S(mapX - 1), S(mapY - 1),
+           S(MapCols * CellSize + 2), S(MapRows * CellSize + 2));
+
+  SetColor(ren, 230, 55, 45, 255);
+  FOR i := 1 TO actorCount - 1 DO
+    IF (actors[i].state # StDead) AND
+       (actors[i].absX >= baseX) AND
+       (actors[i].absX < baseX + MapCols * SampleSize) AND
+       (actors[i].absY >= baseY) AND
+       (actors[i].absY < baseY + MapRows * SampleSize) THEN
+      px := (actors[i].absX - baseX) DIV SampleSize;
+      py := (actors[i].absY - baseY) DIV SampleSize;
+      FillRect(ren, S(mapX + px * CellSize), S(mapY + py * CellSize),
+               S(CellSize), S(CellSize))
+    END
+  END;
+
+  IF (actors[0].absX >= baseX) AND
+     (actors[0].absX < baseX + MapCols * SampleSize) AND
+     (actors[0].absY >= baseY) AND
+     (actors[0].absY < baseY + MapRows * SampleSize) THEN
+    px := (actors[0].absX - baseX) DIV SampleSize;
+    py := (actors[0].absY - baseY) DIV SampleSize;
+    IF (cycle DIV 10) MOD 2 = 0 THEN
+      SetColor(ren, 255, 255, 255, 255)
+    ELSE
+      SetColor(ren, 255, 230, 30, 255)
+    END;
+    FillRect(ren, S(mapX + px * CellSize - 1), S(mapY + py * CellSize - 1),
+             S(CellSize + 2), S(CellSize + 2))
+  END
+END DrawBirdView;
 
 (* ---- Message ---- *)
 
@@ -1666,4 +1758,3 @@ BEGIN
 END DrawWitchBeam;
 
 END Render.
-

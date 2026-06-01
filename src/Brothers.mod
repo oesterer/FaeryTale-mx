@@ -85,14 +85,17 @@ BEGIN
   activeBrother := Julian;
 
   Assign("Julian", brothers[Julian].name);
-  brothers[Julian].vitality := 23;  (* 15 + 35/4 *)
-  brothers[Julian].weapon := 1;
-  brothers[Julian].brave := 35;
+  brothers[Julian].vitality := 200;  (* 15 + 35/4 *)
+  brothers[Julian].weapon := 3;
+  brothers[Julian].brave := 150;
   brothers[Julian].luck := 20;
   brothers[Julian].kind := 15;
-  brothers[Julian].wealth := 20;
+  brothers[Julian].wealth := 200;
   ClearInventory(brothers[Julian]);
   brothers[Julian].stuff[0] := 1;  (* starts with dirk *)
+  brothers[Julian].stuff[2] := 1;  (* starts with dirk *)
+  brothers[Julian].stuff[11] := 6; (* Glass Vials *)
+  brothers[Julian].stuff[13] := 4; (* Bird Totems *)
   brothers[Julian].startX := 19036;
   brothers[Julian].startY := 15755;
   brothers[Julian].alive := TRUE;

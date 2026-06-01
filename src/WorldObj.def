@@ -8,7 +8,7 @@ DEFINITION MODULE WorldObj;
 FROM SYSTEM IMPORT ADDRESS;
 
 CONST
-  MaxWorldObjs = 300;
+  MaxWorldObjs = 1600;
   MaxRegionObjs = 80;
 
   (* Object IDs matching original *)
@@ -50,7 +50,7 @@ TYPE
   END;
 
 VAR
-  objects: ARRAY [0..299] OF WorldObject;
+  objects: ARRAY [0..1599] OF WorldObject;
   objCount: INTEGER;
   objTex: ADDRESS;  (* object sprite sheet texture *)
   revealHidden: BOOLEAN;  (* when TRUE, status=5 objects are visible/pickable *)

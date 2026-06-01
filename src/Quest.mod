@@ -9,6 +9,8 @@ FROM Assets IMPORT currentRegion, SwitchRegion, DetectRegion, GetTerrainAt;
 FROM Narration IMPORT InitPlace;
 FROM NPC IMPORT ResetMaterialized;
 FROM WorldObj IMPORT objects, objCount;
+FROM Doors IMPORT GetUnlockedCount, GetUnlockedDoor,
+                  ClearUnlockedDoors, AddUnlockedDoor;
 FROM HudLog IMPORT AddLogLine;
 FROM BinaryIO IMPORT OpenRead, OpenWrite, Close, ReadBytes, WriteBytes,
                      ReadByte, WriteByte, Done;
@@ -119,7 +121,7 @@ END ReadBool4;
 PROCEDURE SaveGame(slot: INTEGER): BOOLEAN;
 VAR path: ARRAY [0..63] OF CHAR;
     fd: CARDINAL;
-    i, v, k: INTEGER;
+    i, v, k, px, py, region: INTEGER;
     buf: ARRAY [0..3] OF CHAR;
 BEGIN
   MakePath(slot, path);
@@ -162,6 +164,15 @@ BEGIN
   (* Princess state *)
   WriteBool4(fd, princessRescued);
 
+  (* Doors previously unlocked with keys *)
+  WriteInt4(fd, GetUnlockedCount());
+  FOR i := 0 TO GetUnlockedCount() - 1 DO
+    GetUnlockedDoor(i, px, py, region);
+    WriteInt4(fd, px);
+    WriteInt4(fd, py);
+    WriteInt4(fd, region)
+  END;
+
   Close(fd);
   AddLogLine("Game saved.");
   WriteString("Quest: saved to "); WriteString(path); WriteLn;
@@ -171,7 +182,7 @@ END SaveGame;
 PROCEDURE LoadGame(slot: INTEGER): BOOLEAN;
 VAR path: ARRAY [0..63] OF CHAR;
     fd: CARDINAL;
-    n, i, v, k: INTEGER;
+    n, i, v, k, px, py, region: INTEGER;
     buf: ARRAY [0..3] OF CHAR;
 BEGIN
   MakePath(slot, path);
@@ -221,6 +232,18 @@ BEGIN
 
   (* Princess state *)
   ReadBool4(fd, princessRescued);
+
+  (* Optional appended state: old FTA1 saves end before this count. *)
+  ClearUnlockedDoors;
+  ReadInt4(fd, v);
+  IF v < 0 THEN v := 0 END;
+  IF v > 128 THEN v := 128 END;
+  FOR i := 0 TO v - 1 DO
+    ReadInt4(fd, px);
+    ReadInt4(fd, py);
+    ReadInt4(fd, region);
+    AddUnlockedDoor(px, py, region)
+  END;
 
   Close(fd);
 

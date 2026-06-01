@@ -31,7 +31,8 @@ FROM Assets IMPORT InitAssets, PreloadAll, LoadHUD, currentRegion,
                    CheckRegionSwitch, SwitchRegion, DetectRegion,
                    GetTerrainAt, GetSectorByte, GetMapSector;
 FROM Menu IMPORT HandleMenuKey, SetOptions, cmode, menus, realOptions,
-                 optionCount, MItems, MBuy, MGive, MGame, MSave, MFile, GoMenu,
+                 optionCount, MItems, MBuy, MGive, MGame, MSave, MFile, MSell,
+                 GoMenu,
                  PanelX, PanelY, BtnW, BtnH;
 FROM Music IMPORT SetMood, StopMusic, ResumeMusic, IsPlaying,
                   MoodDay, MoodNight, MoodIndoor, MoodSpec, SetCaveWave,
@@ -66,6 +67,7 @@ VAR
   fatigue: INTEGER;
   hunger: INTEGER;
   sleepWait: INTEGER;
+  sleepInBed: BOOLEAN;
   containerRng: INTEGER;
   witchRng: INTEGER;
   saveMode: BOOLEAN;  (* TRUE=saving, FALSE=loading for File menu *)
@@ -135,12 +137,13 @@ BEGIN
   doorCooldown := 0;
   battleFlag := FALSE;
   prevBattle := FALSE;
-  viewStatus := 0;
+  viewStatus := ViewNormal;
   dayPeriod := 6;
   aftermathDone := FALSE;
   fatigue := 0;
   hunger := 0;
   sleepWait := 0;
+  sleepInBed := FALSE;
   containerRng := 31337;
   witchRng := 54321;
   saveMode := FALSE;
@@ -219,7 +222,7 @@ BEGIN
 END ShowMessage;
 
 PROCEDURE ShowInventory;
-BEGIN viewStatus := 4 END ShowInventory;
+BEGIN viewStatus := ViewInventory END ShowInventory;
 
 PROCEDURE HandleLook;
 VAR i, dx, dy, found: INTEGER;
@@ -322,6 +325,8 @@ BEGIN
           ti := tg * 8 + (cycle MOD 8);
           IF (ti >= 0) AND (ti <= 39) THEN ti := treasureProbs[ti] ELSE ti := 0 END
         END;
+        (* Wraiths always leave a collectible item after battle. *)
+        IF (race = 2) AND (ti = 0) THEN ti := 15 END;  (* Jade Skull *)
         IF ti > 0 THEN
           hasTreasure := TRUE;
           IF ti >= 31 THEN
@@ -466,6 +471,34 @@ BEGIN
   END
 END HandleBuy;
 
+PROCEDURE HandleSell(optIdx: INTEGER);
+VAR npc: INTEGER;
+BEGIN
+  npc := FindNearestNPC(actors[0].absX, actors[0].absY);
+  IF (npc < 0) OR (actors[npc].race # 8) THEN
+    ShowMessage("You can only sell items in a tavern.");
+    GoMenu(0);
+    RETURN
+  END;
+  CASE optIdx OF
+    5:  (* Apple *)
+      IF brothers[activeBrother].stuff[24] > 0 THEN
+        DEC(brothers[activeBrother].stuff[24]);
+        AddWealth(100);
+        ShowMessage("% sold an apple for 100 gold.")
+      ELSE ShowMessage("% doesn't have an apple.") END |
+    6:  (* Grey key *)
+      IF brothers[activeBrother].stuff[20] > 0 THEN
+        DEC(brothers[activeBrother].stuff[20]);
+        AddWealth(50);
+        ShowMessage("% sold a grey key for 50 gold.")
+      ELSE ShowMessage("% doesn't have a grey key.") END
+  ELSE
+    RETURN
+  END;
+  SetOptions
+END HandleSell;
+
 PROCEDURE HandleGive(optIdx: INTEGER);
 VAR resp: ARRAY [0..127] OF CHAR;
     npc: INTEGER;
@@ -592,7 +625,7 @@ BEGIN
       INC(secretTimer, 360);
       ShowMessage("Hidden things shimmer into view!") |
     4: (* Bird Totem — overhead map view *)
-      viewStatus := 4;
+      viewStatus := ViewBird;
       ShowMessage("A bird's eye view!") |
     5: (* Gold Ring — freeze enemies ~5 sec *)
       INC(freezeTimer, 250);
@@ -619,6 +652,26 @@ BEGIN
   GoMenu(0)
 END HandleMagic;
 
+PROCEDURE HandleCamp;
+BEGIN
+  IF currentRegion >= 8 THEN
+    ShowMessage("You can only camp in the wild.")
+  ELSIF battleFlag THEN
+    ShowMessage("No time for that now!")
+  ELSIF fatigue < 50 THEN
+    ShowMessage("% is not sleepy.")
+  ELSIF brothers[activeBrother].stuff[24] < 2 THEN
+    ShowMessage("You need two apples to camp.")
+  ELSE
+    DEC(brothers[activeBrother].stuff[24], 2);
+    sleepInBed := FALSE;
+    actors[0].state := StSleep;
+    ShowMessage("% makes camp and settles down to sleep.");
+    SetOptions
+  END;
+  GoMenu(0)
+END HandleCamp;
+
 PROCEDURE HandleMenuClick(mx, my: INTEGER);
 CONST HudW = 640;
 VAR hx, hy, col, row, itemIdx, optIdx: INTEGER;
@@ -640,7 +693,7 @@ BEGIN
   CASE cmode OF
     0: CASE optIdx OF
         5: ShowInventory | 6: HandleWorldPickup | 7: HandleLook |
-        8: GoMenu(8) | 9: GoMenu(7)
+        8: GoMenu(8) | 9: GoMenu(7) | 10: HandleCamp | 11: GoMenu(MSell)
       ELSE END |
     1: HandleMagic(optIdx) |
     2: CASE optIdx OF
@@ -701,7 +754,8 @@ BEGIN
           IF LoadGame(optIdx) THEN END
         END
       END;
-      GoMenu(0)
+      GoMenu(0) |
+   10: HandleSell(optIdx)
   ELSE END
 END HandleMenuClick;
 
@@ -1018,6 +1072,7 @@ BEGIN
       ELSE
         Event(26);
         actors[0].absY := BOR(INTEGER(CARDINAL(actors[0].absY)), 31);
+        sleepInBed := TRUE;
         actors[0].state := StSleep
       END
     END
@@ -1034,7 +1089,10 @@ BEGIN
      ((fatigue < 30) AND (dayNight > 9000) AND (dayNight < 10000)) OR
      (battleFlag AND (cycle MOD 64 = 0)) THEN
     actors[0].state := StStill;
-    actors[0].absY := BAND(CARDINAL(actors[0].absY), 65504);
+    IF sleepInBed THEN
+      actors[0].absY := BAND(CARDINAL(actors[0].absY), 65504)
+    END;
+    sleepInBed := FALSE;
     Event(14)
   END
 END UpdateSleep;
@@ -1051,8 +1109,10 @@ BEGIN
     IF actors[0].vitality > 5 THEN
       IF (hunger > 100) OR (fatigue > 160) THEN DEC(actors[0].vitality, 2) END;
       IF hunger > 90 THEN Event(2) END
-    ELSIF fatigue > 170 THEN Event(12); actors[0].state := StSleep
-    ELSIF hunger > 140 THEN Event(24); hunger := 130; actors[0].state := StSleep
+    ELSIF fatigue > 170 THEN
+      Event(12); sleepInBed := FALSE; actors[0].state := StSleep
+    ELSIF hunger > 140 THEN
+      Event(24); hunger := 130; sleepInBed := FALSE; actors[0].state := StSleep
     END
   END;
   IF fatigue = 70 THEN Event(3)
@@ -1201,7 +1261,13 @@ BEGIN
     ELSE ShowMessage("No potions!"); potionCooldown := 30 END
   END;
   IF input.useFood AND (potionCooldown = 0) THEN
-    IF UseItem(ItemFood) THEN
+    IF brothers[activeBrother].stuff[24] > 0 THEN
+      DEC(brothers[activeBrother].stuff[24]);  (* consume apple *)
+      IF hunger > 30 THEN DEC(hunger, 30) ELSE hunger := 0 END;
+      Event(37);  (* "% ate one of his apples." *)
+      SetOptions;
+      potionCooldown := 30
+    ELSIF UseItem(ItemFood) THEN
       INC(actors[0].vitality, 10);
       IF actors[0].vitality > (15 + brothers[activeBrother].brave DIV 4) THEN
         actors[0].vitality := 15 + brothers[activeBrother].brave DIV 4 END;
@@ -1363,10 +1429,10 @@ BEGIN
   input.attack := FALSE; input.usePotion := FALSE;
   input.useFood := FALSE; input.talk := FALSE; input.toggleMap := FALSE;
   PollInput(input);
-  IF viewStatus = 4 THEN
+  IF viewStatus # ViewNormal THEN
     IF input.quit THEN running := FALSE; RETURN END;
     IF input.attack OR (input.menuKey # 0C) OR
-       input.mouseClick OR (input.dirKey # DirNone) THEN viewStatus := 0 END;
+       input.mouseClick OR (input.dirKey # DirNone) THEN viewStatus := ViewNormal END;
     RETURN
   END;
   (* Block menus during death — any key skips to brother switch *)
@@ -1391,6 +1457,8 @@ BEGIN
     cheatKeys := NOT cheatKeys;
     IF cheatKeys THEN ShowMessage("NO KEYS MODE ON")
     ELSE ShowMessage("NO KEYS MODE OFF") END
+  ELSIF input.menuKey = 'E' THEN
+    HandleWorldPickup
   ELSIF input.menuKey # 0C THEN HandleMenuKey(input.menuKey) END;
     IF input.mouseClick THEN HandleMenuClick(input.mouseX, input.mouseY) END
   END;

@@ -236,6 +236,7 @@ END CheckDoor;
 
 CONST
   OpenCount = 17;
+  MaxUnlockedDoors = 128;
 
 TYPE
   OpenEntry = RECORD
@@ -247,9 +248,66 @@ TYPE
     keyType: INTEGER   (* 0=none, required key type *)
   END;
 
+  UnlockedDoor = RECORD
+    px, py: INTEGER;
+    region: INTEGER
+  END;
+
 VAR
   openList: ARRAY [0..16] OF OpenEntry;
   bumped: BOOLEAN;
+  unlockedDoors: ARRAY [0..MaxUnlockedDoors - 1] OF UnlockedDoor;
+  unlockedCount: INTEGER;
+
+PROCEDURE IsUnlocked(px, py, region: INTEGER): BOOLEAN;
+VAR i: INTEGER;
+BEGIN
+  FOR i := 0 TO unlockedCount - 1 DO
+    IF (unlockedDoors[i].px = px) AND
+       (unlockedDoors[i].py = py) AND
+       (unlockedDoors[i].region = region) THEN
+      RETURN TRUE
+    END
+  END;
+  RETURN FALSE
+END IsUnlocked;
+
+PROCEDURE RememberUnlocked(px, py, region: INTEGER);
+BEGIN
+  IF IsUnlocked(px, py, region) THEN RETURN END;
+  IF unlockedCount >= MaxUnlockedDoors THEN RETURN END;
+  unlockedDoors[unlockedCount].px := px;
+  unlockedDoors[unlockedCount].py := py;
+  unlockedDoors[unlockedCount].region := region;
+  INC(unlockedCount)
+END RememberUnlocked;
+
+PROCEDURE GetUnlockedCount(): INTEGER;
+BEGIN
+  RETURN unlockedCount
+END GetUnlockedCount;
+
+PROCEDURE GetUnlockedDoor(i: INTEGER; VAR px, py, region: INTEGER);
+BEGIN
+  IF (i < 0) OR (i >= unlockedCount) THEN
+    px := 0; py := 0; region := -1;
+    RETURN
+  END;
+  px := unlockedDoors[i].px;
+  py := unlockedDoors[i].py;
+  region := unlockedDoors[i].region
+END GetUnlockedDoor;
+
+PROCEDURE ClearUnlockedDoors;
+BEGIN
+  unlockedCount := 0
+END ClearUnlockedDoors;
+
+PROCEDURE AddUnlockedDoor(px, py, region: INTEGER);
+BEGIN
+  IF (region < 0) OR (region > 9) THEN RETURN END;
+  RememberUnlocked(px, py, region)
+END AddUnlockedDoor;
 
 PROCEDURE InitOpenList;
   PROCEDURE O(i, did, mid, n1, n2, ab, kt: INTEGER);
@@ -357,7 +415,8 @@ BEGIN
       (* Keyed doors: block movement, show "locked" message.
          Player must use the correct key from KEYS menu.
          Cheat mode bypasses all locks. *)
-      IF (k > 0) AND (NOT cheatKeys) THEN
+      IF (k > 0) AND (NOT cheatKeys) AND
+         (NOT IsUnlocked(x * 16, y * 32, currentRegion)) THEN
         IF NOT bumped THEN
           AddLogLine("It's locked.");
           bumped := TRUE
@@ -443,6 +502,7 @@ BEGIN
              (openList[j].doorId = secId) AND
              (openList[j].keyType = keyType) THEN
             (* Match — open permanently (no SaveAndSet, direct write) *)
+            RememberUnlocked(x * 16, y * 32, currentRegion);
             SetSectorByte(x * 16, y * 32, openList[j].new1);
             k := openList[j].new2;
             IF k > 0 THEN
@@ -475,7 +535,7 @@ END UseKeyOnDoor;
 
 BEGIN
   savedCount := 0;
+  unlockedCount := 0;
   bumped := FALSE;
   InitOpenList
 END Doors.
-

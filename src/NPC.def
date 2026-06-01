@@ -5,8 +5,9 @@ DEFINITION MODULE NPC;
    SETFIG actors when near the player. *)
 
 CONST
-  MaxNPCs    = 14;  (* setfig table size *)
+  MaxNPCs    = 15;  (* setfig table size *)
   MaxSpeeches = 64;
+  PrayerSkeletonRace = 14;
 
 (* Get sprite bank and frame for a setfig race *)
 PROCEDURE GetSetfigSprite(race: INTEGER; VAR bank, frame: INTEGER);

@@ -24,4 +24,10 @@ PROCEDURE CheckCloseDoors(heroX, heroY: INTEGER);
    Returns TRUE if a door was opened. *)
 PROCEDURE UseKeyOnDoor(heroX, heroY, keyType: INTEGER): BOOLEAN;
 
+(* Save/load support for doors unlocked with keys. *)
+PROCEDURE GetUnlockedCount(): INTEGER;
+PROCEDURE GetUnlockedDoor(i: INTEGER; VAR px, py, region: INTEGER);
+PROCEDURE ClearUnlockedDoors;
+PROCEDURE AddUnlockedDoor(px, py, region: INTEGER);
+
 END Doors.

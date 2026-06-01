@@ -12,7 +12,7 @@ CONST
 
 (* Per-mode sub-option labels (5 chars each) *)
 CONST
-  LabItems = "List Take Look Use  Give ";
+  LabItems = "List Take Look Use  Give Camp Sell ";
   LabTalk  = "Yell Say  Ask  ";
   LabGame  = "PauseMusicSoundQuit Load ";
   LabBuy   = "Food ArrowVial Mace SwordBow  Totem";
@@ -22,6 +22,7 @@ CONST
   LabKeys  = "Gold GreenBlue Red  Grey White";
   LabGive  = "Gold Book Writ Bone ";
   LabFile  = "  A    B    C    D    E    F    G    H  ";
+  LabSell  = "AppleGrey ";
 
 PROCEDURE InitMenuDef(VAR m: MenuDef; lab: ARRAY OF CHAR;
                        n, col: INTEGER);
@@ -47,7 +48,7 @@ VAR i: INTEGER;
 BEGIN
   cmode := MItems;
 
-  InitMenuDef(menus[MItems], LabItems, 10, 6);
+  InitMenuDef(menus[MItems], LabItems, 12, 6);
   InitMenuDef(menus[MMagic], LabMagic, 12, 5);
   InitMenuDef(menus[MTalk],  LabTalk,   8, 9);
   InitMenuDef(menus[MBuy],   LabBuy,   12, 10);
@@ -57,6 +58,7 @@ BEGIN
   InitMenuDef(menus[MGive],  LabGive,   9, 10);
   InitMenuDef(menus[MUse],   LabUse,   14, 8);
   InitMenuDef(menus[MFile],  LabFile,  10, 5);
+  InitMenuDef(menus[MSell],  LabSell,   7, 10);
 
   (* Items: tabs displayed+selectable, sub-options displayed *)
   SetEnabled(menus[MItems], 0, 3);  (* Items - selected *)
@@ -64,7 +66,7 @@ BEGIN
   SetEnabled(menus[MItems], 2, 2);  (* Talk *)
   SetEnabled(menus[MItems], 3, 2);  (* Buy *)
   SetEnabled(menus[MItems], 4, 2);  (* Game *)
-  FOR i := 5 TO 9 DO SetEnabled(menus[MItems], i, 10) END;
+  FOR i := 5 TO 11 DO SetEnabled(menus[MItems], i, 10) END;
 
   (* Talk *)
   SetEnabled(menus[MTalk], 0, 2);
@@ -134,6 +136,10 @@ BEGIN
   (* File: {10,10,10,10,10, 10,10,10,0,0,0,0} *)
   FOR i := 0 TO 7 DO SetEnabled(menus[MFile], i, 10) END;
 
+  (* Sell: 5=Apple, 6=Grey key *)
+  SetEnabled(menus[MSell], 5, 8);
+  SetEnabled(menus[MSell], 6, 8);
+
   cmode := MItems;
   BuildOptions  (* just build initial options without reading inventory *)
 END InitMenus;
@@ -142,7 +148,7 @@ PROCEDURE BuildOptions;
 VAR i, j, start: INTEGER;
 BEGIN
   j := 0;
-  (* Original: sub-menus (USE, MAGIC, KEYS, GIVE, BUY, SAVE, FILE)
+  (* Sub-menus (USE, MAGIC, KEYS, GIVE, BUY, SAVE, FILE, SELL)
      only show their own items (slots 5+), not the category tabs.
      Main menus (ITEMS, TALK, GAME) show tabs (slots 0-4) + items. *)
   IF (cmode = MItems) OR (cmode = MTalk) OR (cmode = MGame) THEN
@@ -227,12 +233,16 @@ BEGIN
   menus[MGive].enabled[7] := SF(28);
   menus[MGive].enabled[8] := SF(29);
 
+  (* SELL: 5=Apple, 6=Grey key *)
+  menus[MSell].enabled[5] := SF(24);
+  menus[MSell].enabled[6] := SF(20);
+
   BuildOptions
 END SetOptions;
 
 PROCEDURE GoMenu(mode: INTEGER);
 BEGIN
-  IF (mode < 0) OR (mode > 9) THEN RETURN END;
+  IF (mode < 0) OR (mode > 10) THEN RETURN END;
   cmode := mode;
   SetOptions
 END GoMenu;

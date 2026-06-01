@@ -5,6 +5,9 @@ DEFINITION MODULE GameState;
 CONST
   FrameTime = 33;  (* ~30fps matching Amiga actual game loop rate *)
   MsgLen    = 255;
+  ViewNormal    = 0;
+  ViewInventory = 4;
+  ViewBird      = 5;
 
 VAR
   running: BOOLEAN;
@@ -16,7 +19,7 @@ VAR
 VAR
   mapToggled: BOOLEAN;
   regionFade: INTEGER;  (* >0 = fading during region switch *)
-  viewStatus: INTEGER;  (* 0=normal, 4=inventory display *)
+  viewStatus: INTEGER;  (* ViewNormal, ViewInventory, or ViewBird *)
   secretTimer: INTEGER;  (* >0 reveals hidden objects *)
   fairyActive: BOOLEAN;
   fairyX: INTEGER;  (* fairy screen X in world coords *)

@@ -3,7 +3,7 @@ DEFINITION MODULE Actor;
 (* Pure Modula-2 actor/entity types matching original game structures *)
 
 CONST
-  MaxActors = 20;
+  MaxActors = 48;
 
   (* Motion states *)
   StWalking  = 12;
@@ -72,7 +72,7 @@ TYPE
   END;
 
 VAR
-  actors: ARRAY [0..19] OF Actor;
+  actors: ARRAY [0..47] OF Actor;
   actorCount: INTEGER;
 
 PROCEDURE InitActor(VAR a: Actor);
