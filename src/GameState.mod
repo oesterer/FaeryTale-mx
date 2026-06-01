@@ -35,7 +35,7 @@ FROM Assets IMPORT InitAssets, PreloadAll, LoadHUD, currentRegion,
                    GetTerrainAt, GetSectorByte, GetMapSector;
 FROM Menu IMPORT HandleMenuKey, SetOptions, cmode, menus, realOptions,
                  optionCount, MItems, MBuy, MGive, MGame, MSave, MFile, MSell,
-                 MSpells, MStudy, MHerbs,
+                 MSpells, MStudy, MHerbs, MTrade, MDo,
                  GoMenu,
                  PanelX, PanelY, BtnW, BtnH;
 FROM Music IMPORT SetMood, StopMusic, ResumeMusic, IsPlaying,
@@ -780,6 +780,26 @@ BEGIN
   GoMenu(0)
 END HandleCamp;
 
+PROCEDURE HandleEat;
+BEGIN
+  IF potionCooldown # 0 THEN RETURN END;
+  IF brothers[activeBrother].stuff[24] > 0 THEN
+    DEC(brothers[activeBrother].stuff[24]);  (* consume apple *)
+    IF hunger > 30 THEN DEC(hunger, 30) ELSE hunger := 0 END;
+    Event(37);  (* "% ate one of his apples." *)
+    SetOptions;
+    potionCooldown := 30
+  ELSIF UseItem(ItemFood) THEN
+    INC(actors[0].vitality, 10);
+    IF actors[0].vitality > (15 + brothers[activeBrother].brave DIV 4) THEN
+      actors[0].vitality := 15 + brothers[activeBrother].brave DIV 4 END;
+    IF hunger > 30 THEN DEC(hunger, 30) ELSE hunger := 0 END;
+    ShowMessage("You eat some food."); potionCooldown := 30
+  ELSE
+    ShowMessage("No food!"); potionCooldown := 30
+  END
+END HandleEat;
+
 PROCEDURE HandleMenuClick(mx, my: INTEGER);
 CONST HudW = 640;
 VAR hx, hy, col, row, itemIdx, optIdx: INTEGER;
@@ -797,11 +817,15 @@ BEGIN
   IF itemIdx >= optionCount THEN RETURN END;
   optIdx := realOptions[itemIdx];
   IF optIdx < 0 THEN RETURN END;
-  IF optIdx < 5 THEN GoMenu(optIdx); RETURN END;
+  IF optIdx < 5 THEN
+    IF optIdx = 3 THEN GoMenu(MTrade)
+    ELSE GoMenu(optIdx) END;
+    RETURN
+  END;
   CASE cmode OF
     0: CASE optIdx OF
         5: ShowInventory | 6: HandleWorldPickup | 7: HandleLook |
-        8: GoMenu(8) | 9: GoMenu(7) | 10: HandleCamp | 11: GoMenu(MSell)
+        8: GoMenu(8) | 9: GoMenu(MDo)
       ELSE END |
     1: HandleMagic(optIdx) |
     2: CASE optIdx OF
@@ -810,8 +834,9 @@ BEGIN
     3: HandleBuy(optIdx) |
     4: CASE optIdx OF
         5: TogglePause | 6: ToggleMusic | 7: |
-        8: GoMenu(5) |                      (* Quit → Save/Exit menu *)
-        9: saveMode := FALSE; GoMenu(9)    (* Load → File menu *)
+        8: saveMode := TRUE; GoMenu(MFile) |  (* Save *)
+        9: saveMode := FALSE; GoMenu(MFile) | (* Load *)
+       10: running := FALSE                  (* Exit *)
       ELSE END |
     6: HandleKeys(optIdx) |
     7: HandleGive(optIdx) |
@@ -877,7 +902,13 @@ BEGIN
    10: HandleSell(optIdx) |
    11: HandleSpell(optIdx) |
    12: HandleStudy(optIdx) |
-   13: HandleHerbs(optIdx)
+   13: HandleHerbs(optIdx) |
+   14: CASE optIdx OF
+        5: GoMenu(MBuy) | 6: GoMenu(MSell) | 7: GoMenu(MGive)
+      ELSE END |
+   15: CASE optIdx OF
+        5: HandleCamp | 6: HandleEat; GoMenu(0)
+      ELSE END
   ELSE END
 END HandleMenuClick;
 
@@ -1391,21 +1422,7 @@ BEGIN
       ShowMessage("Potion restores your health!"); potionCooldown := 30
     ELSE ShowMessage("No potions!"); potionCooldown := 30 END
   END;
-  IF input.useFood AND (potionCooldown = 0) THEN
-    IF brothers[activeBrother].stuff[24] > 0 THEN
-      DEC(brothers[activeBrother].stuff[24]);  (* consume apple *)
-      IF hunger > 30 THEN DEC(hunger, 30) ELSE hunger := 0 END;
-      Event(37);  (* "% ate one of his apples." *)
-      SetOptions;
-      potionCooldown := 30
-    ELSIF UseItem(ItemFood) THEN
-      INC(actors[0].vitality, 10);
-      IF actors[0].vitality > (15 + brothers[activeBrother].brave DIV 4) THEN
-        actors[0].vitality := 15 + brothers[activeBrother].brave DIV 4 END;
-      IF hunger > 30 THEN DEC(hunger, 30) ELSE hunger := 0 END;
-      ShowMessage("You eat some food."); potionCooldown := 30
-    ELSE ShowMessage("No food!"); potionCooldown := 30 END
-  END;
+  IF input.useFood THEN HandleEat END;
   IF input.talk AND (potionCooldown = 0) THEN HandleTalk; potionCooldown := 30 END;
   (* Slippery/void terrain (environ=-2): velocity-based movement.
      Original fmain.c:1580-1598. Same system as swan but with proxcheck

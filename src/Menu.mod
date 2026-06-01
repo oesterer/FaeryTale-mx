@@ -9,13 +9,13 @@ FROM Brothers IMPORT brothers, activeBrother, HasStuff, HasWeapon,
 
 (* Category tab labels — always shown as top 5 in each menu *)
 CONST
-  TabLabels = "ItemsMagicTalk Buy  Game ";
+  TabLabels = "ItemsMagicTalk TradeGame ";
 
 (* Per-mode sub-option labels (5 chars each) *)
 CONST
-  LabItems = "List Take Look Use  Give Camp Sell ";
+  LabItems = "List Take Look Use  Do   ";
   LabTalk  = "Yell Say  Ask  ";
-  LabGame  = "PauseMusicSoundQuit Load ";
+  LabGame  = "PauseMusicSoundSave Load Exit ";
   LabBuy   = "Food ArrowVial Mace SwordBow  Totem";
   LabMagic = "StoneJewelVial Orb  TotemRing SkullSpellStudyHerbs";
   LabUse   = "Dirk Mace SwordBow  Wand LassoShellKey  Sun  Book ";
@@ -27,6 +27,8 @@ CONST
   LabSpells = "Heal Kill Home ";
   LabStudy = "Heal Kill Home ";
   LabHerbs = "MandrWolfsMugwtYarroNightBlood";
+  LabTrade = "Buy  Sell Give ";
+  LabDo    = "Camp Eat  ";
 
 PROCEDURE InitMenuDef(VAR m: MenuDef; lab: ARRAY OF CHAR;
                        n, col: INTEGER);
@@ -52,11 +54,11 @@ VAR i: INTEGER;
 BEGIN
   cmode := MItems;
 
-  InitMenuDef(menus[MItems], LabItems, 12, 6);
+  InitMenuDef(menus[MItems], LabItems, 10, 6);
   InitMenuDef(menus[MMagic], LabMagic, 15, 5);
   InitMenuDef(menus[MTalk],  LabTalk,   8, 9);
   InitMenuDef(menus[MBuy],   LabBuy,   12, 10);
-  InitMenuDef(menus[MGame],  LabGame,  10, 2);
+  InitMenuDef(menus[MGame],  LabGame,  11, 2);
   InitMenuDef(menus[MSave],  LabSave,   7, 2);
   InitMenuDef(menus[MKeys],  LabKeys,  11, 8);
   InitMenuDef(menus[MGive],  LabGive,   9, 10);
@@ -66,14 +68,16 @@ BEGIN
   InitMenuDef(menus[MSpells], LabSpells, 8, 5);
   InitMenuDef(menus[MStudy],  LabStudy,  8, 5);
   InitMenuDef(menus[MHerbs],  LabHerbs, 11, 6);
+  InitMenuDef(menus[MTrade],  LabTrade,  8, 10);
+  InitMenuDef(menus[MDo],     LabDo,     7, 6);
 
   (* Items: tabs displayed+selectable, sub-options displayed *)
   SetEnabled(menus[MItems], 0, 3);  (* Items - selected *)
   SetEnabled(menus[MItems], 1, 2);  (* Magic *)
   SetEnabled(menus[MItems], 2, 2);  (* Talk *)
-  SetEnabled(menus[MItems], 3, 2);  (* Buy *)
+  SetEnabled(menus[MItems], 3, 2);  (* Trade *)
   SetEnabled(menus[MItems], 4, 2);  (* Game *)
-  FOR i := 5 TO 11 DO SetEnabled(menus[MItems], i, 10) END;
+  FOR i := 5 TO 9 DO SetEnabled(menus[MItems], i, 10) END;
 
   (* Talk *)
   SetEnabled(menus[MTalk], 0, 2);
@@ -92,8 +96,9 @@ BEGIN
   SetEnabled(menus[MGame], 5, 6);  (* Pause - toggle *)
   SetEnabled(menus[MGame], 6, 7);  (* Music - toggle, on *)
   SetEnabled(menus[MGame], 7, 7);  (* Sound - toggle, on *)
-  SetEnabled(menus[MGame], 8, 10); (* Quit → Save/Exit *)
+  SetEnabled(menus[MGame], 8, 10); (* Save *)
   SetEnabled(menus[MGame], 9, 10); (* Load *)
+  SetEnabled(menus[MGame], 10, 10); (* Exit *)
 
   (* Buy *)
   SetEnabled(menus[MBuy], 0, 2);
@@ -163,6 +168,12 @@ BEGIN
   (* Herbs: always list each magical ingredient. *)
   FOR i := 5 TO 10 DO SetEnabled(menus[MHerbs], i, 10) END;
 
+  (* Trade: choose transaction type. *)
+  FOR i := 5 TO 7 DO SetEnabled(menus[MTrade], i, 10) END;
+
+  (* Do: general character actions. *)
+  FOR i := 5 TO 6 DO SetEnabled(menus[MDo], i, 10) END;
+
   cmode := MItems;
   BuildOptions  (* just build initial options without reading inventory *)
 END InitMenus;
@@ -171,7 +182,7 @@ PROCEDURE BuildOptions;
 VAR i, j, start: INTEGER;
 BEGIN
   j := 0;
-  (* Sub-menus (USE, MAGIC, KEYS, GIVE, BUY, SAVE, FILE, SELL)
+  (* Sub-menus (USE, MAGIC, KEYS, GIVE, BUY, SAVE, FILE, SELL, TRADE, DO)
      only show their own items (slots 5+), not the category tabs.
      Main menus (ITEMS, TALK, GAME) show tabs (slots 0-4) + items. *)
   IF (cmode = MItems) OR (cmode = MTalk) OR (cmode = MGame) THEN
@@ -282,7 +293,7 @@ END SetOptions;
 
 PROCEDURE GoMenu(mode: INTEGER);
 BEGIN
-  IF (mode < 0) OR (mode > 13) THEN RETURN END;
+  IF (mode < 0) OR (mode > 15) THEN RETURN END;
   cmode := mode;
   SetOptions
 END GoMenu;
@@ -292,13 +303,14 @@ BEGIN
   CASE ch OF
     'I': GoMenu(MItems) |
     'T': GoMenu(MTalk) |
-    'G': GoMenu(MGive) |
+    'G': GoMenu(MTrade) |
     'Q': GoMenu(MGame) |
     'L': GoMenu(MGame) |
     'Y': GoMenu(MTalk) |
     'A': GoMenu(MTalk) |
     'U': GoMenu(MUse) |
-    'B': GoMenu(MBuy) |
+    'B': GoMenu(MTrade) |
+    'D': GoMenu(MDo) |
     'K': GoMenu(MKeys) |
     'V': GoMenu(MSave) |
     'X': GoMenu(MSave) |

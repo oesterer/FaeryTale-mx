@@ -1228,8 +1228,8 @@ BEGIN
   tabLabels[8]  := 'i'; tabLabels[9]  := 'c';
   tabLabels[10] := 'T'; tabLabels[11] := 'a'; tabLabels[12] := 'l';
   tabLabels[13] := 'k'; tabLabels[14] := ' ';
-  tabLabels[15] := 'B'; tabLabels[16] := 'u'; tabLabels[17] := 'y';
-  tabLabels[18] := ' '; tabLabels[19] := ' ';
+  tabLabels[15] := 'T'; tabLabels[16] := 'r'; tabLabels[17] := 'a';
+  tabLabels[18] := 'd'; tabLabels[19] := 'e';
   tabLabels[20] := 'G'; tabLabels[21] := 'a'; tabLabels[22] := 'm';
   tabLabels[23] := 'e'; tabLabels[24] := ' ';
 
