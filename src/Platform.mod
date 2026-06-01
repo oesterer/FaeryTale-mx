@@ -4,19 +4,64 @@ FROM SYSTEM IMPORT ADDRESS;
 FROM Gfx IMPORT Init AS GfxInit, Quit AS GfxQuit,
                 CreateWindow, DestroyWindow,
                 CreateRenderer, DestroyRenderer,
-                Present, Ticks, Delay,
-                WIN_CENTERED, RENDER_ACCELERATED, RENDER_VSYNC;
-FROM Events IMPORT Poll, QUIT_EVENT, KEYDOWN, MOUSEDOWN, KeyCode,
+                Present, Ticks, Delay, SetFullscreen,
+                GetWindowWidth, GetWindowHeight, UpdateLogicalSize,
+                WIN_CENTERED, WIN_RESIZABLE, FULLSCREEN_OFF,
+                FULLSCREEN_DESKTOP, RENDER_ACCELERATED, RENDER_VSYNC;
+FROM Events IMPORT Poll, QUIT_EVENT, KEYDOWN, MOUSEDOWN, WINDOW_EVENT,
+                   KeyCode, KeyMod, WindowEvent, WEVT_RESIZED,
                    IsKeyPressed, MouseX, MouseY, MouseButton,
                    SCAN_UP, SCAN_DOWN, SCAN_LEFT, SCAN_RIGHT,
                    SCAN_W, SCAN_A, SCAN_S, SCAN_D,
-                   SCAN_SPACE, SCAN_P, SCAN_F, SCAN_T;
+                   SCAN_SPACE, SCAN_P, SCAN_F, SCAN_T,
+                   KEY_RETURN, KEY_F11, MOD_ALT;
 FROM Canvas IMPORT Clear AS CanvasClear, SetColor;
 FROM Texture IMPORT LoadBMP, LoadBMPKeyed, DrawRegion, Tex,
                     Draw AS TexDraw2,
                     Create AS TexCreate, Destroy AS TexDestroy,
                     SetTarget, ResetTarget,
                     Width AS TexWidth, Height AS TexHeight;
+
+CONST
+  FrameW = ScreenW * Scale;
+  FrameH = ScreenH * Scale;
+
+VAR
+  frameTex: Tex;
+  fullscreen: BOOLEAN;
+  viewX, viewY, viewW, viewH: INTEGER;
+
+PROCEDURE UpdateViewport;
+VAR winW, winH: INTEGER;
+BEGIN
+  winW := GetWindowWidth(win);
+  winH := GetWindowHeight(win);
+  IF (winW <= 0) OR (winH <= 0) THEN
+    viewX := 0; viewY := 0; viewW := FrameW; viewH := FrameH;
+    RETURN
+  END;
+  IF winW * FrameH > winH * FrameW THEN
+    viewH := winH;
+    viewW := winH * FrameW DIV FrameH
+  ELSE
+    viewW := winW;
+    viewH := winW * FrameH DIV FrameW
+  END;
+  viewX := (winW - viewW) DIV 2;
+  viewY := (winH - viewH) DIV 2
+END UpdateViewport;
+
+PROCEDURE ToggleFullscreen;
+BEGIN
+  fullscreen := NOT fullscreen;
+  IF fullscreen THEN
+    SetFullscreen(win, FULLSCREEN_DESKTOP)
+  ELSE
+    SetFullscreen(win, FULLSCREEN_OFF)
+  END;
+  UpdateLogicalSize(ren, win);
+  UpdateViewport
+END ToggleFullscreen;
 
 PROCEDURE Init(): BOOLEAN;
 VAR ok: BOOLEAN;
@@ -25,22 +70,29 @@ BEGIN
   IF NOT ok THEN RETURN FALSE END;
   win := CreateWindow("Faery Tale Adventure",
                       ScreenW * Scale, ScreenH * Scale,
-                      WIN_CENTERED);
+                      WIN_CENTERED + WIN_RESIZABLE);
   IF win = NIL THEN GfxQuit; RETURN FALSE END;
   ren := CreateRenderer(win, RENDER_ACCELERATED + RENDER_VSYNC);
   IF ren = NIL THEN DestroyWindow(win); GfxQuit; RETURN FALSE END;
+  frameTex := TexCreate(ren, FrameW, FrameH);
+  IF frameTex = NIL THEN
+    DestroyRenderer(ren); DestroyWindow(win); GfxQuit; RETURN FALSE
+  END;
+  fullscreen := FALSE;
+  UpdateViewport;
   RETURN TRUE
 END Init;
 
 PROCEDURE Shutdown;
 BEGIN
+  TexDestroy(frameTex);
   DestroyRenderer(ren);
   DestroyWindow(win);
   GfxQuit
 END Shutdown;
 
 PROCEDURE PollInput(VAR inp: InputState);
-VAR evt, kc: INTEGER;
+VAR evt, kc, mx, my: INTEGER;
 BEGIN
   inp.menuKey := 0C;
   inp.mouseClick := FALSE;
@@ -50,7 +102,10 @@ BEGIN
     IF evt = QUIT_EVENT THEN inp.quit := TRUE
     ELSIF evt = KEYDOWN THEN
       kc := KeyCode();
-      IF kc = ORD('m') THEN inp.toggleMap := TRUE
+      IF (kc = KEY_F11) OR
+         ((kc = KEY_RETURN) AND (((KeyMod() DIV MOD_ALT) MOD 2) = 1)) THEN
+        ToggleFullscreen
+      ELSIF kc = ORD('m') THEN inp.toggleMap := TRUE
       ELSIF kc = ORD('0') THEN inp.menuKey := '0'
       ELSIF kc = ORD('9') THEN inp.menuKey := '9'
       ELSIF kc = ORD('8') THEN inp.menuKey := '8'
@@ -60,10 +115,17 @@ BEGIN
       END
     ELSIF evt = MOUSEDOWN THEN
       IF MouseButton() = 1 THEN  (* left button *)
-        inp.mouseClick := TRUE;
-        inp.mouseX := MouseX();
-        inp.mouseY := MouseY()
+        mx := MouseX(); my := MouseY();
+        IF (mx >= viewX) AND (mx < viewX + viewW) AND
+           (my >= viewY) AND (my < viewY + viewH) THEN
+          inp.mouseClick := TRUE;
+          inp.mouseX := (mx - viewX) * FrameW DIV viewW;
+          inp.mouseY := (my - viewY) * FrameH DIV viewH
+        END
       END
+    ELSIF (evt = WINDOW_EVENT) AND (WindowEvent() = WEVT_RESIZED) THEN
+      UpdateLogicalSize(ren, win);
+      UpdateViewport
     END
   END;
 
@@ -99,12 +161,19 @@ END PollInput;
 
 PROCEDURE BeginFrame;
 BEGIN
+  SetTarget(ren, frameTex);
   SetColor(ren, 0, 0, 0, 255);
   CanvasClear(ren)
 END BeginFrame;
 
 PROCEDURE EndFrame;
 BEGIN
+  ResetTarget(ren);
+  UpdateViewport;
+  SetColor(ren, 0, 0, 0, 255);
+  CanvasClear(ren);
+  DrawRegion(ren, frameTex, 0, 0, FrameW, FrameH,
+             viewX, viewY, viewW, viewH);
   Present(ren)
 END EndFrame;
 
