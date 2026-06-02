@@ -20,7 +20,7 @@ TYPE
   END;
 
 VAR
-  sfTable: ARRAY [0..14] OF SetfigDef;
+  sfTable: ARRAY [0..16] OF SetfigDef;
 
   (* Track which WorldObj indices are currently materialized as actors *)
   materialized: ARRAY [0..MaxWorldObjs - 1] OF BOOLEAN;
@@ -28,10 +28,11 @@ VAR
   (* One-time reward flags *)
   priestStatueGiven:    BOOLEAN;
   sorceressVisited: BOOLEAN;
+  darkChant: INTEGER;
   rng: INTEGER;
 
   (* Speech table — transcribed from original narr.c speeches[] *)
-  speeches: ARRAY [0..63] OF ARRAY [0..255] OF CHAR;
+  speeches: ARRAY [0..66] OF ARRAY [0..255] OF CHAR;
 
 (* --- Setfig table init --- *)
 
@@ -52,7 +53,11 @@ BEGIN
   sfTable[12].spriteBank := 4; sfTable[12].imageBase := 0; sfTable[12].canTalk := TRUE;
   sfTable[13].spriteBank := 4; sfTable[13].imageBase := 4; sfTable[13].canTalk := TRUE;
   (* Prayer skeletons render from the enemy sprite sheet in Render.mod. *)
-  sfTable[14].spriteBank := 0; sfTable[14].imageBase := 0; sfTable[14].canTalk := TRUE
+  sfTable[14].spriteBank := 0; sfTable[14].imageBase := 0; sfTable[14].canTalk := TRUE;
+  (* The circle's dark priest reuses the temple-priest sprite. *)
+  sfTable[15].spriteBank := 0; sfTable[15].imageBase := 4; sfTable[15].canTalk := TRUE;
+  (* The herb merchant reuses the wizard sprite. *)
+  sfTable[16].spriteBank := 0; sfTable[16].imageBase := 0; sfTable[16].canTalk := TRUE
 END InitSetfigTable;
 
 PROCEDURE GetSetfigSprite(race: INTEGER; VAR bank, frame: INTEGER);
@@ -132,7 +137,12 @@ BEGIN
   Assign("Stupid fool, you can't hurt me with that!", speeches[58]);
   Assign("Your magic won't work here, fool!", speeches[59]);
   Assign("The Sunstone has made the witch vulnerable!", speeches[60]);
-  Assign('"Ohm Ohm!"', speeches[61])
+  Assign('"Ohm Ohm!"', speeches[61]);
+  Assign('"Umbra, bind the wandering soul."', speeches[62]);
+  Assign('"Blood of night, awaken beneath the stones."', speeches[63]);
+  Assign('"Let the hollow stars drink the fading light."', speeches[64]);
+  Assign('"By bone and shadow, the sealed gate stirs."', speeches[65]);
+  Assign('"Roots that dream, leaves that whisper, blood that remembers. My little garden has answers for those carrying gold."', speeches[66])
 END InitSpeeches;
 
 (* --- Materialization --- *)
@@ -226,7 +236,9 @@ BEGIN
    11: Assign("a ghost", name) |
    12: Assign("a ranger", name) |
    13: Assign("a beggar", name) |
-   14: Assign("a praying skeleton", name)
+   14: Assign("a praying skeleton", name) |
+   15: Assign("a dark priest", name) |
+   16: Assign("a mysterious herb wizard", name)
   ELSE
     Assign("someone", name)
   END
@@ -304,7 +316,11 @@ BEGIN
       ELSE RETURN 53 + (goal MOD 3)
       END |
    13:  RETURN 23 |    (* beggar *)
-   14:  RETURN 61      (* praying skeleton *)
+   14:  RETURN 61 |    (* praying skeleton *)
+   15:  i := 62 + (darkChant MOD 4);
+        INC(darkChant);
+        RETURN i |     (* dark priest *)
+   16:  RETURN 66      (* herb merchant *)
   ELSE
     RETURN 49
   END
@@ -388,6 +404,7 @@ BEGIN
   ResetMaterialized;
   priestStatueGiven := FALSE;
   sorceressVisited := FALSE;
+  darkChant := 0;
   rng := 99991;
   InitSetfigTable;
   InitSpeeches

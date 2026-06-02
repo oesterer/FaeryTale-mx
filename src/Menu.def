@@ -1,13 +1,13 @@
 DEFINITION MODULE Menu;
 
 (* Menu system matching the original Faery Tale Adventure.
-   16 menu modes with 2-column option layout. *)
+   18 menu modes with 2-column option layout. *)
 
 CONST
   MItems = 0;  MMagic = 1;  MTalk  = 2;  MBuy   = 3;  MGame  = 4;
   MSave  = 5;  MKeys  = 6;  MGive  = 7;  MUse   = 8;  MFile  = 9;
   MSell  = 10;  MSpells = 11;  MStudy = 12;  MHerbs = 13;
-  MTrade = 14;  MDo = 15;
+  MTrade = 14;  MDo = 15;  MHerbBuy = 16;  MHerbSell = 17;
 
   MaxOpts = 15;
 
@@ -29,7 +29,7 @@ TYPE
 
 VAR
   cmode: INTEGER;                     (* current menu mode *)
-  menus: ARRAY [0..15] OF MenuDef;
+  menus: ARRAY [0..17] OF MenuDef;
   realOptions: ARRAY [0..11] OF INTEGER;  (* visible option indices *)
   optionCount: INTEGER;               (* number of visible options *)
 

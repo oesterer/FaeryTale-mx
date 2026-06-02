@@ -32,13 +32,15 @@ FROM Brothers IMPORT InitBrothers, SwitchToNext, ActiveName,
                      StLightScroll, StSanctuaryScroll, StHarvestScroll,
                      StHealScroll, LastStuff;
 FROM NPC IMPORT InitNPCs, MaterializeNPCs, TalkToNPC, LookAtNPC,
-               FindNearestNPC, GiveToNPC, ResetMaterialized;
+               FindNearestNPC, GiveToNPC, ResetMaterialized,
+               MerchantWizardRace;
 FROM Assets IMPORT InitAssets, PreloadAll, LoadHUD, currentRegion,
                    CheckRegionSwitch, SwitchRegion, DetectRegion,
                    GetTerrainAt, GetSectorByte, GetMapSector;
 FROM Menu IMPORT HandleMenuKey, SetOptions, cmode, menus, realOptions,
                  optionCount, MItems, MBuy, MGive, MGame, MSave, MFile, MSell,
                  MSpells, MStudy, MHerbs, MTrade, MDo,
+                 MHerbBuy, MHerbSell,
                  GoMenu,
                  PanelX, PanelY, BtnW, BtnH;
 FROM Music IMPORT SetMood, StopMusic, ResumeMusic, IsPlaying,
@@ -546,6 +548,90 @@ BEGIN
   END;
   SetOptions
 END HandleSell;
+
+PROCEDURE HerbPrice(si: INTEGER): INTEGER;
+BEGIN
+  CASE si OF
+    StMandrake: RETURN 30 |
+    StWolfsbane: RETURN 40 |
+    StMugwort: RETURN 25 |
+    StYarrow: RETURN 20 |
+    StNightshade: RETURN 45 |
+    StBloodroot: RETURN 50
+  ELSE
+    RETURN 0
+  END
+END HerbPrice;
+
+PROCEDURE HerbStuff(optIdx: INTEGER): INTEGER;
+BEGIN
+  IF (optIdx < 5) OR (optIdx > 10) THEN RETURN -1 END;
+  RETURN StMandrake + optIdx - 5
+END HerbStuff;
+
+PROCEDURE HandleHerbBuy(optIdx: INTEGER);
+VAR npc, si, cost: INTEGER;
+BEGIN
+  npc := FindNearestNPC(actors[0].absX, actors[0].absY);
+  IF (npc < 0) OR (actors[npc].race # MerchantWizardRace) THEN
+    ShowMessage("The herb wizard is not nearby."); GoMenu(0); RETURN
+  END;
+  si := HerbStuff(optIdx);
+  IF si < 0 THEN RETURN END;
+  cost := HerbPrice(si);
+  IF brothers[activeBrother].wealth < cost THEN
+    ShowMessage("Not enough money!"); RETURN
+  END;
+  AddWealth(-cost);
+  GiveStuff(si);
+  TreasureName(si, nameBuf);
+  Assign("% bought ", msgBuf); Concat(msgBuf, nameBuf, msgBuf);
+  Concat(msgBuf, ".", msgBuf); ShowMessage(msgBuf);
+  SetOptions
+END HandleHerbBuy;
+
+PROCEDURE HandleHerbSell(optIdx: INTEGER);
+VAR npc, si, price: INTEGER;
+BEGIN
+  npc := FindNearestNPC(actors[0].absX, actors[0].absY);
+  IF (npc < 0) OR (actors[npc].race # MerchantWizardRace) THEN
+    ShowMessage("The herb wizard is not nearby."); GoMenu(0); RETURN
+  END;
+  si := HerbStuff(optIdx);
+  IF si < 0 THEN RETURN END;
+  IF brothers[activeBrother].stuff[si] <= 0 THEN
+    ShowMessage("% doesn't have that ingredient."); RETURN
+  END;
+  DEC(brothers[activeBrother].stuff[si]);
+  price := HerbPrice(si) DIV 2;
+  AddWealth(price);
+  TreasureName(si, nameBuf);
+  Assign("% sold ", msgBuf); Concat(msgBuf, nameBuf, msgBuf);
+  Concat(msgBuf, ".", msgBuf); ShowMessage(msgBuf);
+  SetOptions
+END HandleHerbSell;
+
+PROCEDURE OpenBuyMenu;
+VAR npc: INTEGER;
+BEGIN
+  npc := FindNearestNPC(actors[0].absX, actors[0].absY);
+  IF (npc >= 0) AND (actors[npc].race = MerchantWizardRace) THEN
+    GoMenu(MHerbBuy)
+  ELSE
+    GoMenu(MBuy)
+  END
+END OpenBuyMenu;
+
+PROCEDURE OpenSellMenu;
+VAR npc: INTEGER;
+BEGIN
+  npc := FindNearestNPC(actors[0].absX, actors[0].absY);
+  IF (npc >= 0) AND (actors[npc].race = MerchantWizardRace) THEN
+    GoMenu(MHerbSell)
+  ELSE
+    GoMenu(MSell)
+  END
+END OpenSellMenu;
 
 PROCEDURE HandleGive(optIdx: INTEGER);
 VAR resp: ARRAY [0..127] OF CHAR;
@@ -1065,11 +1151,13 @@ BEGIN
    12: HandleStudy(optIdx) |
    13: HandleHerbs(optIdx) |
    14: CASE optIdx OF
-        5: GoMenu(MBuy) | 6: GoMenu(MSell) | 7: GoMenu(MGive)
+        5: OpenBuyMenu | 6: OpenSellMenu | 7: GoMenu(MGive)
       ELSE END |
    15: CASE optIdx OF
         5: HandleCamp | 6: HandleEat; GoMenu(0)
-      ELSE END
+      ELSE END |
+   16: HandleHerbBuy(optIdx) |
+   17: HandleHerbSell(optIdx)
   ELSE END
 END HandleMenuClick;
 

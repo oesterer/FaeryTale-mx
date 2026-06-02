@@ -5,6 +5,8 @@ FROM Items IMPORT InventoryCount,
                   ItemGold, ItemFood, ItemKey, ItemSword,
                   ItemShield, ItemPotion, ItemGem, ItemScroll;
 FROM Brothers IMPORT brothers, activeBrother, HasStuff, HasWeapon,
+                     StMandrake, StWolfsbane, StMugwort, StYarrow,
+                     StNightshade, StBloodroot,
                      StWardScroll, StFreezeScroll, StFireScroll, StFearScroll,
                      StLightScroll, StSanctuaryScroll, StHarvestScroll,
                      StHealScroll;
@@ -31,6 +33,8 @@ CONST
   LabHerbs = "MandrWolfsMugwtYarroNightBlood";
   LabTrade = "Buy  Sell Give ";
   LabDo    = "Camp Eat  ";
+  LabHerbBuy = "MandrWolfsMugwtYarroNightBlood";
+  LabHerbSell = "MandrWolfsMugwtYarroNightBlood";
 
 PROCEDURE InitMenuDef(VAR m: MenuDef; lab: ARRAY OF CHAR;
                        n, col: INTEGER);
@@ -72,6 +76,8 @@ BEGIN
   InitMenuDef(menus[MHerbs],  LabHerbs, 11, 6);
   InitMenuDef(menus[MTrade],  LabTrade,  8, 10);
   InitMenuDef(menus[MDo],     LabDo,     7, 6);
+  InitMenuDef(menus[MHerbBuy], LabHerbBuy, 11, 10);
+  InitMenuDef(menus[MHerbSell], LabHerbSell, 11, 10);
 
   (* Items: tabs displayed+selectable, sub-options displayed *)
   SetEnabled(menus[MItems], 0, 3);  (* Items - selected *)
@@ -171,6 +177,10 @@ BEGIN
 
   (* Do: general character actions. *)
   FOR i := 5 TO 6 DO SetEnabled(menus[MDo], i, 10) END;
+
+  (* Herb merchant buy and sell menus. *)
+  FOR i := 5 TO 10 DO SetEnabled(menus[MHerbBuy], i, 10) END;
+  FOR i := 5 TO 10 DO SetEnabled(menus[MHerbSell], i, 8) END;
 
   cmode := MItems;
   BuildOptions  (* just build initial options without reading inventory *)
@@ -282,12 +292,20 @@ BEGIN
   menus[MSell].enabled[5] := SF(24);
   menus[MSell].enabled[6] := SF(20);
 
+  (* HERB SELL: 5-10 = magical ingredients. *)
+  menus[MHerbSell].enabled[5] := SF(StMandrake);
+  menus[MHerbSell].enabled[6] := SF(StWolfsbane);
+  menus[MHerbSell].enabled[7] := SF(StMugwort);
+  menus[MHerbSell].enabled[8] := SF(StYarrow);
+  menus[MHerbSell].enabled[9] := SF(StNightshade);
+  menus[MHerbSell].enabled[10] := SF(StBloodroot);
+
   BuildOptions
 END SetOptions;
 
 PROCEDURE GoMenu(mode: INTEGER);
 BEGIN
-  IF (mode < 0) OR (mode > 15) THEN RETURN END;
+  IF (mode < 0) OR (mode > 17) THEN RETURN END;
   cmode := mode;
   SetOptions
 END GoMenu;

@@ -64,6 +64,7 @@ BEGIN
   AddObj(19298, 16128, 15, 1, 3);    (* chest *)
   AddObj(18310, 15969, 13, 3, 3);    (* beggar *)
   AddObj(20033, 14401,  0, 3, 3);    (* wizard *)
+  AddObj(19386, 15750, 16, 3, 3);    (* herb merchant at Tambry entrance *)
   AddObj(24794, 13102, 13, 3, 3);    (* beggar *)
   AddObj(21626, 15446, 18, 1, 3);    (* blue stone *)
   AddObj(21616, 15456, 13, 1, 3);    (* money *)
@@ -116,11 +117,14 @@ BEGIN
   AddObj(19052, 15796, ObjBloodroot, 1, 3);
   AddObj(19068, 15796, ObjBloodroot, 1, 3);
   AddObj(19084, 15796, ObjBloodroot, 1, 3);
-  (* Prayer skeletons around the nearby stone circle at sector (84, 60). *)
+  (* Prayer skeletons and their dark priest at the nearby stone circle. *)
   AddObj(21480, 15360, 14, 3, 3);
   AddObj(21528, 15360, 14, 3, 3);
   AddObj(21504, 15336, 14, 3, 3);
   AddObj(21504, 15384, 14, 3, 3);
+  AddObj(21487, 15343, 14, 3, 3);
+  AddObj(21521, 15377, 14, 3, 3);
+  AddObj(21504, 15360, 15, 3, 3);    (* dark priest *)
 
   (* === Region 4 — Desert === *)
   AddObj( 6817, 19693, 13, 3, 4);    (* beggar *)

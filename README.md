@@ -65,21 +65,34 @@ Julian now starts with:
 - Camping consumes 2 apples.
 - Camp sleep does not apply the bed-specific wake-up position adjustment.
 
-### Prayer Skeletons
+### Prayer Skeletons and Dark Priest
 
-- Added 4 non-hostile skeleton NPCs at the nearby stone circle.
+- Added 6 non-hostile skeleton NPCs at the nearby stone circle.
 - They render using the skeleton enemy sprites.
 - Talking to them displays `"Ohm Ohm!"`.
+- A dark priest stands at the center and chants changing incantations.
 
 ### Trade
 
-`Trade` combines the `Buy`, `Sell`, and `Give` actions. Selling is only
-available near a tavern bartender.
+`Trade` combines the `Buy`, `Sell`, and `Give` actions. Tavern bartenders trade
+ordinary goods. A mysterious wizard at Tambry's entrance buys and sells magical
+ingredients.
 
 | Item | Sale price |
 | --- | ---: |
 | Apple | 100 gold |
 | Grey key | 50 gold |
+
+Wizard herb prices:
+
+| Ingredient | Buy | Sell |
+| --- | ---: | ---: |
+| Mandrake | 30 gold | 15 gold |
+| Wolfsbane | 40 gold | 20 gold |
+| Mugwort | 25 gold | 12 gold |
+| Yarrow | 20 gold | 10 gold |
+| Nightshade | 45 gold | 22 gold |
+| Bloodroot | 50 gold | 25 gold |
 
 ### Doors and Saves
 
