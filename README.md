@@ -78,7 +78,7 @@ Julian now starts with:
 ordinary goods. Three merchants stand near Tambry's entrance:
 
 - A mysterious wizard buys and sells magical ingredients.
-- A priest sells all 8 spell scroll types.
+- A grey-cloaked wizard with a pointed hat sells all 8 spell scroll types.
 - A ranger sells apples for 5 gold each.
 
 | Item | Sale price |

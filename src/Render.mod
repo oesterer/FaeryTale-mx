@@ -1003,7 +1003,7 @@ BEGIN
         npcFrame := actors[i].facing DIV 2
       END
     END;
-    IF (npcBank >= 0) AND (npcBank <= 4) AND (npcTex[npcBank] # NIL) THEN
+    IF (npcBank >= 0) AND (npcBank <= 5) AND (npcTex[npcBank] # NIL) THEN
       SetColorMod(npcTex[npcBank], fadeR, fadeG, fadeB);
       IF (actors[i].race = 5) OR (actors[i].race = 7) THEN
         (* King/sorceress: no masking — clear mask to all visible *)

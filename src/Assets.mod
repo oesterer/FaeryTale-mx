@@ -333,6 +333,8 @@ BEGIN
   npcTex[3] := LoadBMPKeyedTexture(pathBuf, 255, 0, 255);
   AssetPath("shape_17_Ranger-Beggar_16x32_x8.bmp", pathBuf);
   npcTex[4] := LoadBMPKeyedTexture(pathBuf, 255, 0, 255);
+  AssetPath("scroll_priest_16x32.bmp", pathBuf);
+  npcTex[5] := LoadBMPKeyedTexture(pathBuf, 255, 0, 255);
   IF npcTex[0] # NIL THEN
     WriteString("NPC sprites loaded"); WriteLn
   END;

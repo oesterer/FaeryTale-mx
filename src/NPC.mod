@@ -58,7 +58,7 @@ BEGIN
   sfTable[15].spriteBank := 0; sfTable[15].imageBase := 4; sfTable[15].canTalk := TRUE;
   (* The herb merchant reuses the wizard sprite. *)
   sfTable[16].spriteBank := 0; sfTable[16].imageBase := 0; sfTable[16].canTalk := TRUE;
-  sfTable[17].spriteBank := 0; sfTable[17].imageBase := 4; sfTable[17].canTalk := TRUE;
+  sfTable[17].spriteBank := 5; sfTable[17].imageBase := 0; sfTable[17].canTalk := TRUE;
   sfTable[18].spriteBank := 4; sfTable[18].imageBase := 0; sfTable[18].canTalk := TRUE
 END InitSetfigTable;
 

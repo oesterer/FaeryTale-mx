@@ -37,7 +37,7 @@ VAR
   hudTex:  ADDRESS;
   brotherTex: ARRAY [0..2] OF ADDRESS;  (* Julian=0, Phillip=1, Kevin=2 *)
   enemyTex: ARRAY [0..4] OF ADDRESS;   (* 0=Ogre, 1=Ghost, 2=DKnight, 3=Necro, 4=Snake *)
-  npcTex: ARRAY [0..4] OF ADDRESS;     (* 0=Wizard, 1=Royal, 2=Bartender, 3=Witch, 4=Ranger *)
+  npcTex: ARRAY [0..5] OF ADDRESS;     (* 0=Wizard, 1=Royal, 2=Bartender, 3=Witch, 4=Ranger, 5=Scroll Priest *)
   dragonTex: ADDRESS;                  (* shape_10 Dragon 48x40 x5 *)
   xReg, yReg: INTEGER;
 
