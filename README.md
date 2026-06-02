@@ -29,6 +29,45 @@ system.
 The game window is resizable. The original aspect ratio is preserved when the
 window changes size or switches to fullscreen.
 
+## macOS Universal Package
+
+Run one of the architecture-specific scripts on macOS to build a distributable
+app for Intel or Apple Silicon Macs:
+
+```sh
+scripts/package_macos_x86_64.sh
+scripts/package_macos_arm64.sh
+```
+
+These scripts create `dist/FaeryTale-x86_64.app` and
+`dist/FaeryTale-arm64.app`. Each script bundles the required Homebrew
+libraries, applies ad-hoc signing, and creates a matching zip file.
+
+To build a single app containing both architectures, use:
+
+```sh
+scripts/package_macos_universal.sh
+```
+
+The universal script creates `dist/FaeryTale.app` and
+`dist/FaeryTale-macos-universal.zip`.
+
+The default dependency locations are the standard Homebrew prefixes:
+
+| Architecture | Homebrew prefix |
+| --- | --- |
+| Intel (`x86_64`) | `/usr/local` |
+| Apple Silicon (`arm64`) | `/opt/homebrew` |
+
+Install `sdl2` and `sdl2_ttf` for the architecture being packaged. The
+universal script requires both installations. Override the locations with
+`X86_64_BREW_PREFIX` and `ARM64_BREW_PREFIX` if needed. Set
+`CODESIGN_IDENTITY` to a Developer ID identity when preparing a signed release
+for distribution outside your machine.
+
+The packaged app stores local saves under
+`~/Library/Application Support/FaeryTale`.
+
 ## Gameplay Changes
 
 ### Enemies
