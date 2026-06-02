@@ -1,5 +1,4 @@
 brew install gcc
-brew install cargo
 brew install rust
 brew install sdl2
 brew install sdl2_ttf
