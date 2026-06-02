@@ -65,6 +65,8 @@ BEGIN
   AddObj(18310, 15969, 13, 3, 3);    (* beggar *)
   AddObj(20033, 14401,  0, 3, 3);    (* wizard *)
   AddObj(19386, 15750, 16, 3, 3);    (* herb merchant at Tambry entrance *)
+  AddObj(19358, 15750, 17, 3, 3);    (* scroll priest *)
+  AddObj(19414, 15750, 18, 3, 3);    (* apple ranger *)
   AddObj(24794, 13102, 13, 3, 3);    (* beggar *)
   AddObj(21626, 15446, 18, 1, 3);    (* blue stone *)
   AddObj(21616, 15456, 13, 1, 3);    (* money *)

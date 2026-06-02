@@ -35,6 +35,8 @@ CONST
   LabDo    = "Camp Eat  ";
   LabHerbBuy = "MandrWolfsMugwtYarroNightBlood";
   LabHerbSell = "MandrWolfsMugwtYarroNightBlood";
+  LabScrollBuy = "Ward FreezFire Fear LightSanctHarvsHeal ";
+  LabAppleBuy = "Apple";
 
 PROCEDURE InitMenuDef(VAR m: MenuDef; lab: ARRAY OF CHAR;
                        n, col: INTEGER);
@@ -78,6 +80,8 @@ BEGIN
   InitMenuDef(menus[MDo],     LabDo,     7, 6);
   InitMenuDef(menus[MHerbBuy], LabHerbBuy, 11, 10);
   InitMenuDef(menus[MHerbSell], LabHerbSell, 11, 10);
+  InitMenuDef(menus[MScrollBuy], LabScrollBuy, 13, 10);
+  InitMenuDef(menus[MAppleBuy], LabAppleBuy, 6, 10);
 
   (* Items: tabs displayed+selectable, sub-options displayed *)
   SetEnabled(menus[MItems], 0, 3);  (* Items - selected *)
@@ -181,6 +185,8 @@ BEGIN
   (* Herb merchant buy and sell menus. *)
   FOR i := 5 TO 10 DO SetEnabled(menus[MHerbBuy], i, 10) END;
   FOR i := 5 TO 10 DO SetEnabled(menus[MHerbSell], i, 8) END;
+  FOR i := 5 TO 12 DO SetEnabled(menus[MScrollBuy], i, 10) END;
+  SetEnabled(menus[MAppleBuy], 5, 10);
 
   cmode := MItems;
   BuildOptions  (* just build initial options without reading inventory *)
@@ -305,7 +311,7 @@ END SetOptions;
 
 PROCEDURE GoMenu(mode: INTEGER);
 BEGIN
-  IF (mode < 0) OR (mode > 17) THEN RETURN END;
+  IF (mode < 0) OR (mode > 19) THEN RETURN END;
   cmode := mode;
   SetOptions
 END GoMenu;

@@ -20,7 +20,7 @@ TYPE
   END;
 
 VAR
-  sfTable: ARRAY [0..16] OF SetfigDef;
+  sfTable: ARRAY [0..18] OF SetfigDef;
 
   (* Track which WorldObj indices are currently materialized as actors *)
   materialized: ARRAY [0..MaxWorldObjs - 1] OF BOOLEAN;
@@ -32,7 +32,7 @@ VAR
   rng: INTEGER;
 
   (* Speech table — transcribed from original narr.c speeches[] *)
-  speeches: ARRAY [0..66] OF ARRAY [0..255] OF CHAR;
+  speeches: ARRAY [0..68] OF ARRAY [0..255] OF CHAR;
 
 (* --- Setfig table init --- *)
 
@@ -57,7 +57,9 @@ BEGIN
   (* The circle's dark priest reuses the temple-priest sprite. *)
   sfTable[15].spriteBank := 0; sfTable[15].imageBase := 4; sfTable[15].canTalk := TRUE;
   (* The herb merchant reuses the wizard sprite. *)
-  sfTable[16].spriteBank := 0; sfTable[16].imageBase := 0; sfTable[16].canTalk := TRUE
+  sfTable[16].spriteBank := 0; sfTable[16].imageBase := 0; sfTable[16].canTalk := TRUE;
+  sfTable[17].spriteBank := 0; sfTable[17].imageBase := 4; sfTable[17].canTalk := TRUE;
+  sfTable[18].spriteBank := 4; sfTable[18].imageBase := 0; sfTable[18].canTalk := TRUE
 END InitSetfigTable;
 
 PROCEDURE GetSetfigSprite(race: INTEGER; VAR bank, frame: INTEGER);
@@ -142,7 +144,9 @@ BEGIN
   Assign('"Blood of night, awaken beneath the stones."', speeches[63]);
   Assign('"Let the hollow stars drink the fading light."', speeches[64]);
   Assign('"By bone and shadow, the sealed gate stirs."', speeches[65]);
-  Assign('"Roots that dream, leaves that whisper, blood that remembers. My little garden has answers for those carrying gold."', speeches[66])
+  Assign('"Roots that dream, leaves that whisper, blood that remembers. My little garden has answers for those carrying gold."', speeches[66]);
+  Assign('"Ink and parchment preserve powers that the cautious may purchase."', speeches[67]);
+  Assign('"Fresh apples for the road, traveler."', speeches[68])
 END InitSpeeches;
 
 (* --- Materialization --- *)
@@ -238,7 +242,9 @@ BEGIN
    13: Assign("a beggar", name) |
    14: Assign("a praying skeleton", name) |
    15: Assign("a dark priest", name) |
-   16: Assign("a mysterious herb wizard", name)
+   16: Assign("a mysterious herb wizard", name) |
+   17: Assign("a scroll priest", name) |
+   18: Assign("an apple ranger", name)
   ELSE
     Assign("someone", name)
   END
@@ -320,7 +326,9 @@ BEGIN
    15:  i := 62 + (darkChant MOD 4);
         INC(darkChant);
         RETURN i |     (* dark priest *)
-   16:  RETURN 66      (* herb merchant *)
+   16:  RETURN 66 |    (* herb merchant *)
+   17:  RETURN 67 |    (* scroll merchant *)
+   18:  RETURN 68      (* apple merchant *)
   ELSE
     RETURN 49
   END

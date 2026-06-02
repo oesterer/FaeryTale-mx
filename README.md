@@ -75,12 +75,15 @@ Julian now starts with:
 ### Trade
 
 `Trade` combines the `Buy`, `Sell`, and `Give` actions. Tavern bartenders trade
-ordinary goods. A mysterious wizard at Tambry's entrance buys and sells magical
-ingredients.
+ordinary goods. Three merchants stand near Tambry's entrance:
+
+- A mysterious wizard buys and sells magical ingredients.
+- A priest sells all 8 spell scroll types.
+- A ranger sells apples for 5 gold each.
 
 | Item | Sale price |
 | --- | ---: |
-| Apple | 100 gold |
+| Apple | 5 gold |
 | Grey key | 50 gold |
 
 Wizard herb prices:
@@ -93,6 +96,19 @@ Wizard herb prices:
 | Yarrow | 20 gold | 10 gold |
 | Nightshade | 45 gold | 22 gold |
 | Bloodroot | 50 gold | 25 gold |
+
+Priest scroll prices:
+
+| Scroll | Price |
+| --- | ---: |
+| Ward | 30 gold |
+| Freeze | 50 gold |
+| Fire | 60 gold |
+| Fear | 40 gold |
+| Light | 20 gold |
+| Sanctuary | 100 gold |
+| Harvest | 70 gold |
+| Heal | 40 gold |
 
 ### Doors and Saves
 

@@ -33,14 +33,14 @@ FROM Brothers IMPORT InitBrothers, SwitchToNext, ActiveName,
                      StHealScroll, LastStuff;
 FROM NPC IMPORT InitNPCs, MaterializeNPCs, TalkToNPC, LookAtNPC,
                FindNearestNPC, GiveToNPC, ResetMaterialized,
-               MerchantWizardRace;
+               MerchantWizardRace, ScrollPriestRace, AppleRangerRace;
 FROM Assets IMPORT InitAssets, PreloadAll, LoadHUD, currentRegion,
                    CheckRegionSwitch, SwitchRegion, DetectRegion,
                    GetTerrainAt, GetSectorByte, GetMapSector;
 FROM Menu IMPORT HandleMenuKey, SetOptions, cmode, menus, realOptions,
                  optionCount, MItems, MBuy, MGive, MGame, MSave, MFile, MSell,
                  MSpells, MStudy, MHerbs, MTrade, MDo,
-                 MHerbBuy, MHerbSell,
+                 MHerbBuy, MHerbSell, MScrollBuy, MAppleBuy,
                  GoMenu,
                  PanelX, PanelY, BtnW, BtnH;
 FROM Music IMPORT SetMood, StopMusic, ResumeMusic, IsPlaying,
@@ -534,8 +534,8 @@ BEGIN
     5:  (* Apple *)
       IF brothers[activeBrother].stuff[24] > 0 THEN
         DEC(brothers[activeBrother].stuff[24]);
-        AddWealth(100);
-        ShowMessage("% sold an apple for 100 gold.")
+        AddWealth(5);
+        ShowMessage("% sold an apple for 5 gold.")
       ELSE ShowMessage("% doesn't have an apple.") END |
     6:  (* Grey key *)
       IF brothers[activeBrother].stuff[20] > 0 THEN
@@ -611,12 +611,71 @@ BEGIN
   SetOptions
 END HandleHerbSell;
 
+PROCEDURE ScrollPrice(si: INTEGER): INTEGER;
+BEGIN
+  CASE si OF
+    StWardScroll: RETURN 30 |
+    StFreezeScroll: RETURN 50 |
+    StFireScroll: RETURN 60 |
+    StFearScroll: RETURN 40 |
+    StLightScroll: RETURN 20 |
+    StSanctuaryScroll: RETURN 100 |
+    StHarvestScroll: RETURN 70 |
+    StHealScroll: RETURN 40
+  ELSE
+    RETURN 0
+  END
+END ScrollPrice;
+
+PROCEDURE HandleScrollBuy(optIdx: INTEGER);
+VAR npc, si, cost: INTEGER;
+BEGIN
+  npc := FindNearestNPC(actors[0].absX, actors[0].absY);
+  IF (npc < 0) OR (actors[npc].race # ScrollPriestRace) THEN
+    ShowMessage("The scroll priest is not nearby."); GoMenu(0); RETURN
+  END;
+  IF (optIdx < 5) OR (optIdx > 12) THEN RETURN END;
+  si := StWardScroll + optIdx - 5;
+  cost := ScrollPrice(si);
+  IF brothers[activeBrother].wealth < cost THEN
+    ShowMessage("Not enough money!"); RETURN
+  END;
+  AddWealth(-cost);
+  GiveStuff(si);
+  TreasureName(si, nameBuf);
+  Assign("% bought ", msgBuf); Concat(msgBuf, nameBuf, msgBuf);
+  Concat(msgBuf, ".", msgBuf); ShowMessage(msgBuf);
+  SetOptions
+END HandleScrollBuy;
+
+PROCEDURE HandleAppleBuy(optIdx: INTEGER);
+CONST AppleCost = 5;
+VAR npc: INTEGER;
+BEGIN
+  npc := FindNearestNPC(actors[0].absX, actors[0].absY);
+  IF (npc < 0) OR (actors[npc].race # AppleRangerRace) THEN
+    ShowMessage("The apple ranger is not nearby."); GoMenu(0); RETURN
+  END;
+  IF optIdx # 5 THEN RETURN END;
+  IF brothers[activeBrother].wealth < AppleCost THEN
+    ShowMessage("Not enough money!"); RETURN
+  END;
+  AddWealth(-AppleCost);
+  GiveStuff(24);
+  ShowMessage("% bought an apple.");
+  SetOptions
+END HandleAppleBuy;
+
 PROCEDURE OpenBuyMenu;
 VAR npc: INTEGER;
 BEGIN
   npc := FindNearestNPC(actors[0].absX, actors[0].absY);
   IF (npc >= 0) AND (actors[npc].race = MerchantWizardRace) THEN
     GoMenu(MHerbBuy)
+  ELSIF (npc >= 0) AND (actors[npc].race = ScrollPriestRace) THEN
+    GoMenu(MScrollBuy)
+  ELSIF (npc >= 0) AND (actors[npc].race = AppleRangerRace) THEN
+    GoMenu(MAppleBuy)
   ELSE
     GoMenu(MBuy)
   END
@@ -1157,7 +1216,9 @@ BEGIN
         5: HandleCamp | 6: HandleEat; GoMenu(0)
       ELSE END |
    16: HandleHerbBuy(optIdx) |
-   17: HandleHerbSell(optIdx)
+   17: HandleHerbSell(optIdx) |
+   18: HandleScrollBuy(optIdx) |
+   19: HandleAppleBuy(optIdx)
   ELSE END
 END HandleMenuClick;
 
