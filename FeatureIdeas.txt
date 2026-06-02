@@ -1,0 +1,65 @@
+Quest Ideas
+
+  1. Broken Stone Ring
+      - The dark priest’s ritual damages a stone ring.
+      - Collect Yarrow, Mugwort, and a rare rune fragment to restore or corrupt it.
+      - Choice changes teleport destinations or encounter difficulty.
+
+  2. The Missing Scroll
+      - The scroll priest requests a unique scroll stolen by Wraiths.
+      - A stronger named Wraith appears at night.
+      - Reward: discounted scrolls or an exclusive spell.
+
+  3. Apple Blight
+      - Trees near Tambry stop producing apples.
+      - Gather Mandrake and Yarrow, then cast Harvest near affected trees.
+      - Reward: ranger discounts and occasional rare herbs near trees.
+
+  4. The Silent Skeleton
+      - One prayer skeleton stops chanting.
+      - Find its missing bone and return it to the stone circle.
+      - Reward: a clue about the dark priest or a hidden stash.
+
+  5. Merchant Rivalry
+      - Herb wizard and scroll priest each request a rare ingredient.
+      - Help one, both, or neither.
+      - Rewards affect shop prices and available stock.
+
+  6. Night Procession
+      - At night, Wraiths travel toward the dark priest’s ring.
+      - Defeat groups before they arrive.
+      - Reward scales with the number intercepted.
+
+  Feature Ideas
+
+  1. Named Elite Enemies
+      - Rare variants with higher vitality and guaranteed loot.
+      - Examples: Wraith Seer, Skeleton Captain, Venomous Serpent.
+
+  2. Shop Stock Limits
+      - Merchants restock after sleeping or camping.
+      - Prevents unlimited access to powerful ingredients and scrolls.
+
+  3. Rare Ingredients
+      - Add Mooncap, Grave Dust, Emberleaf, and Silverthorn.
+      - Reserve them for quests and advanced spells.
+
+  4. Advanced Spells
+      - Blink: Mugwort + Yarrow, short teleport.
+      - Thorns: Mandrake + Bloodroot, damages attackers.
+      - Dispel: Yarrow + Nightshade, removes nearby magical hazards.
+      - Summon Light: Yarrow + Mugwort, longer Light effect.
+
+  5. Quest Journal
+      - Add List > Quests.
+      - Show active objectives and completed quests in the message area.
+
+  6. World Events
+      - Night-only encounters, merchant caravans, shrine rituals, and temporary herb patches.
+
+  7. Stone Ring Destinations
+      - Require discovery before destinations appear.
+      - Some rings could activate only at night or while carrying a specific ingredient.
+
+  8. Camp Events
+      - Chance of ambush, dream clues, healing bonuses, or herb discoveries when camping.
