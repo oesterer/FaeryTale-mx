@@ -35,6 +35,7 @@ VAR
   optionCount: INTEGER;               (* number of visible options *)
 
 PROCEDURE InitMenus;
+PROCEDURE SetTradeFilters(buyMask, sellMask: INTEGER);
 PROCEDURE SetOptions;
 PROCEDURE GoMenu(mode: INTEGER);
 PROCEDURE HandleMenuKey(ch: CHAR);

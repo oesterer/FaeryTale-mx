@@ -33,7 +33,8 @@ FROM Brothers IMPORT InitBrothers, SwitchToNext, ActiveName,
                      StHealScroll, LastStuff;
 FROM NPC IMPORT InitNPCs, MaterializeNPCs, TalkToNPC, LookAtNPC,
                FindNearestNPC, GiveToNPC, ResetMaterialized,
-               MerchantWizardRace, ScrollPriestRace, AppleRangerRace;
+               MerchantWizardRace, ScrollPriestRace, AppleRangerRace,
+               UpdateTownNPCs, IsTownTrader;
 FROM Assets IMPORT InitAssets, PreloadAll, LoadHUD, currentRegion,
                    CheckRegionSwitch, SwitchRegion, DetectRegion,
                    GetTerrainAt, GetSectorByte, GetMapSector;
@@ -41,7 +42,7 @@ FROM Menu IMPORT HandleMenuKey, SetOptions, cmode, menus, realOptions,
                  optionCount, MItems, MBuy, MGive, MGame, MSave, MFile, MSell,
                  MSpells, MStudy, MHerbs, MTrade, MDo,
                  MHerbBuy, MHerbSell, MScrollBuy, MAppleBuy,
-                 GoMenu,
+                 GoMenu, SetTradeFilters,
                  PanelX, PanelY, BtnW, BtnH;
 FROM Music IMPORT SetMood, StopMusic, ResumeMusic, IsPlaying,
                   MoodDay, MoodNight, MoodIndoor, MoodSpec, SetCaveWave,
@@ -607,15 +608,103 @@ BEGIN
   buyStuff[6] := 13; buyCost[6] := 20    (* Totem *)
 END InitBuyTable;
 
+PROCEDURE TownSells(race, optIdx: INTEGER): BOOLEAN;
+BEGIN
+  CASE race OF
+    19: RETURN (optIdx = 6) OR (optIdx = 8) |
+    20: RETURN optIdx = 5 |
+    22: RETURN (optIdx = 6) OR (optIdx = 8) OR (optIdx = 9) |
+    24: RETURN optIdx = 7 |
+    26: RETURN optIdx = 7 |
+    28: RETURN optIdx = 5 |
+    30: RETURN (optIdx = 6) OR (optIdx = 8) |
+    31: RETURN optIdx = 7 |
+    33: RETURN (optIdx = 7) OR (optIdx = 11)
+  ELSE
+    RETURN FALSE
+  END
+END TownSells;
+
+PROCEDURE TownBuys(race, optIdx: INTEGER): BOOLEAN;
+BEGIN
+  CASE race OF
+    19: RETURN optIdx = 11 |              (* Mace *)
+    20: RETURN optIdx = 5 |               (* Apple *)
+    21: RETURN optIdx = 6 |               (* Grey key *)
+    22: RETURN optIdx = 7 |               (* Potion *)
+    24: RETURN optIdx = 10 |              (* Gem *)
+    26: RETURN optIdx = 9 |               (* Mandrake *)
+    28: RETURN optIdx = 5 |               (* Apple *)
+    30: RETURN optIdx = 11 |              (* Mace *)
+    31: RETURN (optIdx = 8) OR (optIdx = 10) |  (* Vial, Gem *)
+    33: RETURN (optIdx = 6) OR (optIdx = 8)    (* Grey key, Vial *)
+  ELSE
+    RETURN FALSE
+  END
+END TownBuys;
+
+PROCEDURE TownSellPrice(optIdx: INTEGER): INTEGER;
+BEGIN
+  CASE optIdx OF
+     5: RETURN 5  |   (* Apple *)
+     6: RETURN 50 |   (* Grey key *)
+     7: RETURN 12 |   (* Potion *)
+     8: RETURN 8  |   (* Vial *)
+     9: RETURN 15 |   (* Mandrake *)
+    10: RETURN 25 |   (* Gem *)
+    11: RETURN 15     (* Mace *)
+  ELSE
+    RETURN 0
+  END
+END TownSellPrice;
+
+PROCEDURE TradeSlotBit(slot: INTEGER): INTEGER;
+BEGIN
+  CASE slot OF
+     5: RETURN 32 |
+     6: RETURN 64 |
+     7: RETURN 128 |
+     8: RETURN 256 |
+     9: RETURN 512 |
+    10: RETURN 1024 |
+    11: RETURN 2048
+  ELSE
+    RETURN 0
+  END
+END TradeSlotBit;
+
+PROCEDURE BuildTownBuyMask(race: INTEGER): INTEGER;
+VAR i, mask: INTEGER;
+BEGIN
+  mask := 0;
+  FOR i := 5 TO 11 DO
+    IF TownSells(race, i) THEN INC(mask, TradeSlotBit(i)) END
+  END;
+  RETURN mask
+END BuildTownBuyMask;
+
+PROCEDURE BuildTownSellMask(race: INTEGER): INTEGER;
+VAR i, mask: INTEGER;
+BEGIN
+  mask := 0;
+  FOR i := 5 TO 11 DO
+    IF TownBuys(race, i) THEN INC(mask, TradeSlotBit(i)) END
+  END;
+  RETURN mask
+END BuildTownSellMask;
+
 PROCEDURE HandleBuy(optIdx: INTEGER);
 VAR npc, slot, si, cost: INTEGER;
 BEGIN
   npc := FindNearestNPC(actors[0].absX, actors[0].absY);
   IF npc < 0 THEN ShowMessage("Nobody to buy from."); RETURN END;
-  IF actors[npc].race # 8 THEN
+  IF (actors[npc].race # 8) AND (NOT IsTownTrader(actors[npc].race)) THEN
     ShowMessage("Nobody to buy from."); RETURN
   END;
   IF (optIdx < 5) OR (optIdx > 11) THEN RETURN END;
+  IF IsTownTrader(actors[npc].race) AND (NOT TownSells(actors[npc].race, optIdx)) THEN
+    ShowMessage("They are not selling that."); RETURN
+  END;
   slot := optIdx - 5;
   si := buyStuff[slot];
   cost := buyCost[slot];
@@ -647,27 +736,62 @@ BEGIN
 END HandleBuy;
 
 PROCEDURE HandleSell(optIdx: INTEGER);
-VAR npc: INTEGER;
+VAR npc, price: INTEGER;
 BEGIN
   npc := FindNearestNPC(actors[0].absX, actors[0].absY);
-  IF (npc < 0) OR (actors[npc].race # 8) THEN
+  IF (npc < 0) OR ((actors[npc].race # 8) AND (NOT IsTownTrader(actors[npc].race))) THEN
     ShowMessage("You can only sell items in a tavern.");
     GoMenu(0);
     RETURN
   END;
+  IF (actors[npc].race = 8) AND (optIdx > 6) THEN
+    ShowMessage("The tavern is not buying that."); RETURN
+  END;
+  IF IsTownTrader(actors[npc].race) AND (NOT TownBuys(actors[npc].race, optIdx)) THEN
+    ShowMessage("They are not buying that."); RETURN
+  END;
+  price := TownSellPrice(optIdx);
   CASE optIdx OF
     5:  (* Apple *)
       IF brothers[activeBrother].stuff[24] > 0 THEN
         DEC(brothers[activeBrother].stuff[24]);
-        AddWealth(5);
-        ShowMessage("% sold an apple for 5 gold.")
+        AddWealth(price);
+        ShowMessage("% sold an apple.")
       ELSE ShowMessage("% doesn't have an apple.") END |
     6:  (* Grey key *)
       IF brothers[activeBrother].stuff[20] > 0 THEN
         DEC(brothers[activeBrother].stuff[20]);
-        AddWealth(50);
-        ShowMessage("% sold a grey key for 50 gold.")
-      ELSE ShowMessage("% doesn't have a grey key.") END
+        AddWealth(price);
+        ShowMessage("% sold a grey key.")
+      ELSE ShowMessage("% doesn't have a grey key.") END |
+    7:  (* Potion *)
+      IF UseItem(ItemPotion) THEN
+        AddWealth(price);
+        ShowMessage("% sold a potion.")
+      ELSE ShowMessage("% doesn't have a potion.") END |
+    8:  (* Vial *)
+      IF brothers[activeBrother].stuff[11] > 0 THEN
+        DEC(brothers[activeBrother].stuff[11]);
+        AddWealth(price);
+        ShowMessage("% sold a vial.")
+      ELSE ShowMessage("% doesn't have a vial.") END |
+    9:  (* Mandrake *)
+      IF brothers[activeBrother].stuff[StMandrake] > 0 THEN
+        DEC(brothers[activeBrother].stuff[StMandrake]);
+        AddWealth(price);
+        ShowMessage("% sold Mandrake.")
+      ELSE ShowMessage("% doesn't have Mandrake.") END |
+   10:  (* Gem *)
+      IF UseItem(ItemGem) THEN
+        AddWealth(price);
+        ShowMessage("% sold a gem.")
+      ELSE ShowMessage("% doesn't have a gem.") END |
+   11:  (* Mace *)
+      IF brothers[activeBrother].stuff[1] > 0 THEN
+        DEC(brothers[activeBrother].stuff[1]);
+        AddWealth(price);
+        ShowMessage("% sold a mace.")
+      ELSE ShowMessage("% doesn't have a mace.") END
   ELSE
     RETURN
   END;
@@ -801,7 +925,14 @@ BEGIN
     GoMenu(MScrollBuy)
   ELSIF (npc >= 0) AND (actors[npc].race = AppleRangerRace) THEN
     GoMenu(MAppleBuy)
+  ELSIF (npc >= 0) AND IsTownTrader(actors[npc].race) THEN
+    SetTradeFilters(BuildTownBuyMask(actors[npc].race), BuildTownSellMask(actors[npc].race));
+    GoMenu(MBuy)
+  ELSIF (npc >= 0) AND (actors[npc].race = 8) THEN
+    SetTradeFilters(4064, 96);
+    GoMenu(MBuy)
   ELSE
+    SetTradeFilters(0, 0);
     GoMenu(MBuy)
   END
 END OpenBuyMenu;
@@ -812,7 +943,14 @@ BEGIN
   npc := FindNearestNPC(actors[0].absX, actors[0].absY);
   IF (npc >= 0) AND (actors[npc].race = MerchantWizardRace) THEN
     GoMenu(MHerbSell)
+  ELSIF (npc >= 0) AND IsTownTrader(actors[npc].race) THEN
+    SetTradeFilters(BuildTownBuyMask(actors[npc].race), BuildTownSellMask(actors[npc].race));
+    GoMenu(MSell)
+  ELSIF (npc >= 0) AND (actors[npc].race = 8) THEN
+    SetTradeFilters(4064, 96);
+    GoMenu(MSell)
   ELSE
+    SetTradeFilters(0, 0);
     GoMenu(MSell)
   END
 END OpenSellMenu;
@@ -2139,6 +2277,7 @@ BEGIN
   END;
   UpdatePlace(actors[0].absX, actors[0].absY, currentRegion);
   MaterializeNPCs(actors[0].absX, actors[0].absY, currentRegion);
+  UpdateTownNPCs(actors[0].absX, actors[0].absY, currentRegion);
   UpdateWitch;
   UpdateDayNight;
   UpdateSleep;

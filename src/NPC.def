@@ -5,13 +5,15 @@ DEFINITION MODULE NPC;
    SETFIG actors when near the player. *)
 
 CONST
-  MaxNPCs    = 19;  (* setfig table size *)
+  MaxNPCs    = 34;  (* setfig table size, including Tambry townsfolk *)
   MaxSpeeches = 69;
   PrayerSkeletonRace = 14;
   DarkPriestRace = 15;
   MerchantWizardRace = 16;
   ScrollPriestRace = 17;
   AppleRangerRace = 18;
+  TambryNpcStart = 19;
+  TambryNpcEnd = 33;
 
 (* Get sprite bank and frame for a setfig race *)
 PROCEDURE GetSetfigSprite(race: INTEGER; VAR bank, frame: INTEGER);
@@ -22,6 +24,9 @@ PROCEDURE ResetMaterialized;
 (* Materialize nearby status=3 WorldObj entries as live SETFIG actors.
    Call each frame after camera/region updates. *)
 PROCEDURE MaterializeNPCs(heroX, heroY, region: INTEGER);
+
+(* Move Tambry townsfolk after they have materialized. *)
+PROCEDURE UpdateTownNPCs(heroX, heroY, region: INTEGER);
 
 (* Find nearest talkable NPC within range. Returns actor index or -1. *)
 PROCEDURE FindNearestNPC(heroX, heroY: INTEGER): INTEGER;
@@ -41,5 +46,9 @@ PROCEDURE GiveToNPC(heroX, heroY, itemIdx: INTEGER;
 
 (* Get NPC name by race for display *)
 PROCEDURE NpcName(race: INTEGER; VAR name: ARRAY OF CHAR);
+
+PROCEDURE IsTownNPC(race: INTEGER): BOOLEAN;
+PROCEDURE IsTownTrader(race: INTEGER): BOOLEAN;
+PROCEDURE TownNPCSpriteRace(race: INTEGER): INTEGER;
 
 END NPC.

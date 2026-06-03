@@ -5,9 +5,9 @@ IMPLEMENTATION MODULE NPC;
 
 FROM Strings IMPORT Assign;
 FROM Actor IMPORT actors, actorCount, MaxActors,
-                  TypeSetfig, StStill, StDead, GoalWait, GoalStand;
+                  TypeSetfig, StStill, StWalking, StDead, GoalWait, GoalStand;
 FROM WorldObj IMPORT objects, objCount, AddObj, MaxWorldObjs;
-FROM Assets IMPORT currentRegion;
+FROM Assets IMPORT currentRegion, IsBlocked;
 FROM Brothers IMPORT brothers, activeBrother,
                     StWrit, StBone, StShard, StStatue, StSunStone,
                     HasStuff, GiveStuff, SetStuff, AddWealth, IncKind;
@@ -20,7 +20,7 @@ TYPE
   END;
 
 VAR
-  sfTable: ARRAY [0..18] OF SetfigDef;
+  sfTable: ARRAY [0..33] OF SetfigDef;
 
   (* Track which WorldObj indices are currently materialized as actors *)
   materialized: ARRAY [0..MaxWorldObjs - 1] OF BOOLEAN;
@@ -34,9 +34,36 @@ VAR
   (* Speech table — transcribed from original narr.c speeches[] *)
   speeches: ARRAY [0..68] OF ARRAY [0..255] OF CHAR;
 
+PROCEDURE IsTownNPC(race: INTEGER): BOOLEAN;
+BEGIN
+  RETURN (race >= TambryNpcStart) AND (race <= TambryNpcEnd)
+END IsTownNPC;
+
+PROCEDURE IsTownTrader(race: INTEGER): BOOLEAN;
+BEGIN
+  CASE race OF
+    19, 20, 22, 24, 26, 28, 30, 31, 33: RETURN TRUE
+  ELSE
+    RETURN FALSE
+  END
+END IsTownTrader;
+
+PROCEDURE TownNPCSpriteRace(race: INTEGER): INTEGER;
+BEGIN
+  CASE (race - TambryNpcStart) MOD 4 OF
+    0: RETURN 10 |  (* woodcutter *)
+    1: RETURN 0  |  (* ogre *)
+    2: RETURN 8  |  (* bartender sprite bank handled separately *)
+    3: RETURN 1     (* orc *)
+  ELSE
+    RETURN 10
+  END
+END TownNPCSpriteRace;
+
 (* --- Setfig table init --- *)
 
 PROCEDURE InitSetfigTable;
+VAR i: INTEGER;
 BEGIN
   sfTable[0].spriteBank := 0; sfTable[0].imageBase := 0; sfTable[0].canTalk := TRUE;
   sfTable[1].spriteBank := 0; sfTable[1].imageBase := 4; sfTable[1].canTalk := TRUE;
@@ -59,7 +86,12 @@ BEGIN
   (* The herb merchant reuses the wizard sprite. *)
   sfTable[16].spriteBank := 0; sfTable[16].imageBase := 0; sfTable[16].canTalk := TRUE;
   sfTable[17].spriteBank := 5; sfTable[17].imageBase := 0; sfTable[17].canTalk := TRUE;
-  sfTable[18].spriteBank := 4; sfTable[18].imageBase := 0; sfTable[18].canTalk := TRUE
+  sfTable[18].spriteBank := 4; sfTable[18].imageBase := 0; sfTable[18].canTalk := TRUE;
+  FOR i := TambryNpcStart TO TambryNpcEnd DO
+    sfTable[i].spriteBank := 3;
+    sfTable[i].imageBase := 6;
+    sfTable[i].canTalk := TRUE
+  END
 END InitSetfigTable;
 
 PROCEDURE GetSetfigSprite(race: INTEGER; VAR bank, frame: INTEGER);
@@ -175,15 +207,22 @@ BEGIN
             actors[idx].actorType := TypeSetfig;
             actors[idx].race := race;
             actors[idx].state := StStill;
-            actors[idx].goal := seq;
+            IF IsTownNPC(race) THEN
+              actors[idx].goal := race - TambryNpcStart;
+              actors[idx].tactic := 60 + (race - TambryNpcStart) * 9;
+              actors[idx].velX := (race - TambryNpcStart) MOD 4;
+              actors[idx].velY := 0
+            ELSE
+              actors[idx].goal := seq;
+              actors[idx].tactic := 0;
+              actors[idx].velX := 0;
+              actors[idx].velY := 0
+            END;
             actors[idx].vitality := 2 + race + race;  (* original: 2+id+id *)
             actors[idx].weapon := 0;
             actors[idx].facing := 4;  (* south by default *)
             actors[idx].visible := TRUE;
             actors[idx].environ := 0;
-            actors[idx].tactic := 0;
-            actors[idx].velX := 0;
-            actors[idx].velY := 0;
             INC(actorCount);
             materialized[i] := TRUE;
           END
@@ -194,6 +233,176 @@ BEGIN
   END
 END MaterializeNPCs;
 
+PROCEDURE TownHome(n: INTEGER; VAR x, y: INTEGER);
+BEGIN
+  CASE n OF
+     0: x := 18740; y := 15690 |
+     1: x := 18960; y := 15840 |
+     2: x := 19120; y := 15480 |
+     3: x := 19580; y := 15790 |
+     4: x := 19830; y := 15390 |
+     5: x := 20120; y := 15180 |
+     6: x := 20420; y := 15740 |
+     7: x := 20720; y := 15440 |
+     8: x := 21020; y := 15810 |
+     9: x := 21320; y := 15380 |
+    10: x := 21620; y := 15690 |
+    11: x := 21920; y := 15420 |
+    12: x := 22220; y := 15820 |
+    13: x := 22520; y := 15540 |
+    14: x := 22820; y := 15770
+  ELSE
+    x := 19386; y := 15750
+  END
+END TownHome;
+
+PROCEDURE TownGroup(n: INTEGER; VAR x, y: INTEGER);
+BEGIN
+  CASE n MOD 3 OF
+    0: x := 19386; y := 15750 |
+    1: x := 20240; y := 15480 |
+    2: x := 21480; y := 15620
+  ELSE
+    x := 19386; y := 15750
+  END
+END TownGroup;
+
+PROCEDURE TownDoor(n: INTEGER; VAR x, y: INTEGER);
+BEGIN
+  CASE n MOD 5 OF
+    0: x := 19298; y := 16128 |
+    1: x := 20033; y := 14401 |
+    2: x := 21626; y := 15446 |
+    3: x := 20720; y := 15440 |
+    4: x := 18310; y := 15969
+  ELSE
+    x := 19298; y := 16128
+  END
+END TownDoor;
+
+PROCEDURE TownMarket(n: INTEGER; VAR x, y: INTEGER);
+BEGIN
+  x := 19020 + (n MOD 6) * 420;
+  y := 15680 + (n MOD 2) * 130
+END TownMarket;
+
+PROCEDURE TownTarget(n, phase: INTEGER; VAR x, y: INTEGER);
+BEGIN
+  CASE phase MOD 4 OF
+    0: TownHome(n, x, y) |
+    1: TownGroup(n, x, y) |
+    2: TownDoor(n, x, y) |
+    3: TownMarket(n, x, y)
+  ELSE
+    TownHome(n, x, y)
+  END
+END TownTarget;
+
+PROCEDURE FacePlayer(i, heroX, heroY: INTEGER);
+BEGIN
+  IF heroX - actors[i].absX > 5 THEN actors[i].facing := 2
+  ELSIF heroX - actors[i].absX < -5 THEN actors[i].facing := 6
+  ELSIF heroY - actors[i].absY > 5 THEN actors[i].facing := 4
+  ELSIF heroY - actors[i].absY < -5 THEN actors[i].facing := 0
+  END
+END FacePlayer;
+
+PROCEDURE InTambryCity(x, y: INTEGER): BOOLEAN;
+BEGIN
+  RETURN (x >= 18100) AND (x <= 23100) AND
+         (y >= 14200) AND (y <= 16300)
+END InTambryCity;
+
+PROCEDURE CanTownStand(x, y: INTEGER): BOOLEAN;
+BEGIN
+  IF NOT InTambryCity(x, y) THEN RETURN FALSE END;
+  IF IsBlocked(x, y) THEN RETURN FALSE END;
+  IF IsBlocked(x - 4, y) THEN RETURN FALSE END;
+  IF IsBlocked(x + 4, y) THEN RETURN FALSE END;
+  IF IsBlocked(x, y + 8) THEN RETURN FALSE END;
+  RETURN TRUE
+END CanTownStand;
+
+PROCEDURE StepToward(i, tx, ty: INTEGER);
+VAR dx, dy, dir, nx, ny: INTEGER;
+BEGIN
+  dx := tx - actors[i].absX;
+  dy := ty - actors[i].absY;
+  IF (dx > 8) AND (dy < -8) THEN dir := 1
+  ELSIF (dx > 8) AND (dy > 8) THEN dir := 3
+  ELSIF (dx < -8) AND (dy > 8) THEN dir := 5
+  ELSIF (dx < -8) AND (dy < -8) THEN dir := 7
+  ELSIF dx > 8 THEN dir := 2
+  ELSIF dx < -8 THEN dir := 6
+  ELSIF dy < -8 THEN dir := 0
+  ELSIF dy > 8 THEN dir := 4
+  ELSE
+    actors[i].state := StStill; RETURN
+  END;
+  actors[i].facing := dir;
+  nx := actors[i].absX; ny := actors[i].absY;
+  IF dx > 8 THEN INC(actors[i].absX)
+  ELSIF dx < -8 THEN DEC(actors[i].absX) END;
+  IF dy > 8 THEN INC(actors[i].absY)
+  ELSIF dy < -8 THEN DEC(actors[i].absY) END;
+  IF CanTownStand(actors[i].absX, actors[i].absY) THEN
+    actors[i].state := StWalking
+  ELSE
+    actors[i].absX := nx;
+    actors[i].absY := ny;
+    actors[i].state := StStill
+  END
+END StepToward;
+
+PROCEDURE UpdateTownNPCs(heroX, heroY, region: INTEGER);
+VAR i, n, dx, dy, tx, ty: INTEGER;
+BEGIN
+  IF region # 3 THEN RETURN END;
+  FOR i := 1 TO actorCount - 1 DO
+    IF (actors[i].actorType = TypeSetfig) AND IsTownNPC(actors[i].race) THEN
+      n := actors[i].race - TambryNpcStart;
+      dx := heroX - actors[i].absX;
+      dy := heroY - actors[i].absY;
+      IF dx < 0 THEN dx := -dx END;
+      IF dy < 0 THEN dy := -dy END;
+
+      IF (dx < 45) AND (dy < 45) THEN
+        actors[i].visible := TRUE;
+        actors[i].state := StStill;
+        FacePlayer(i, heroX, heroY)
+      ELSIF actors[i].velY = 1 THEN
+        DEC(actors[i].tactic);
+        actors[i].state := StStill;
+        IF actors[i].tactic <= 0 THEN
+          actors[i].visible := TRUE;
+          actors[i].velY := 0;
+          actors[i].velX := (actors[i].velX + 1) MOD 4;
+          actors[i].tactic := 140 + n * 7
+        END
+      ELSE
+        DEC(actors[i].tactic);
+        IF actors[i].tactic <= 0 THEN
+          actors[i].velX := (actors[i].velX + 1) MOD 4;
+          actors[i].tactic := 180 + n * 11
+        END;
+        TownTarget(n, actors[i].velX, tx, ty);
+        dx := tx - actors[i].absX; dy := ty - actors[i].absY;
+        IF dx < 0 THEN dx := -dx END;
+        IF dy < 0 THEN dy := -dy END;
+        IF (actors[i].velX MOD 4 = 2) AND (dx < 14) AND (dy < 14) THEN
+          actors[i].visible := FALSE;
+          actors[i].velY := 1;
+          actors[i].tactic := 80 + (n MOD 5) * 12;
+          actors[i].state := StStill
+        ELSE
+          actors[i].visible := TRUE;
+          StepToward(i, tx, ty)
+        END
+      END
+    END
+  END
+END UpdateTownNPCs;
+
 (* --- Interaction --- *)
 
 PROCEDURE FindNearestNPC(heroX, heroY: INTEGER): INTEGER;
@@ -203,7 +412,7 @@ BEGIN
   bestIdx := -1;
   FOR i := 1 TO actorCount - 1 DO
     IF (actors[i].actorType = TypeSetfig) AND
-       (actors[i].state # StDead) THEN
+       (actors[i].state # StDead) AND actors[i].visible THEN
       dx := heroX - actors[i].absX;
       dy := heroY - actors[i].absY;
       IF dx < 0 THEN dx := -dx END;
@@ -244,7 +453,22 @@ BEGIN
    15: Assign("a dark priest", name) |
    16: Assign("a mysterious herb wizard", name) |
    17: Assign("a scroll priest", name) |
-   18: Assign("an apple ranger", name)
+   18: Assign("an apple ranger", name) |
+   19: Assign("Brann Oakhand", name) |
+   20: Assign("Mara Caskwell", name) |
+   21: Assign("Orruk the Gentle", name) |
+   22: Assign("Kett Redcap", name) |
+   23: Assign("Nella Hearth", name) |
+   24: Assign("Tovin Reed", name) |
+   25: Assign("Borga Stoneback", name) |
+   26: Assign("Elsa Vine", name) |
+   27: Assign("Perrin Quill", name) |
+   28: Assign("Grum Barley", name) |
+   29: Assign("Lysa Doorward", name) |
+   30: Assign("Hobb Flint", name) |
+   31: Assign("Anka Blueglass", name) |
+   32: Assign("Rusk Fen", name) |
+   33: Assign("Maud Ash", name)
   ELSE
     Assign("someone", name)
   END
@@ -334,11 +558,104 @@ BEGIN
   END
 END SelectSpeech;
 
+PROCEDURE TownSpeech(actorIdx: INTEGER; VAR speech: ARRAY OF CHAR);
+VAR race, line: INTEGER;
+BEGIN
+  race := actors[actorIdx].race;
+  rng := rng * 1103515245 + 12345;
+  IF rng < 0 THEN rng := -rng END;
+  line := (rng DIV 65536 + actors[actorIdx].goal) MOD 3;
+  CASE race OF
+    19: CASE line OF
+          0: Assign('"I felled half the palisade timber after the wraith winter," said Brann Oakhand.', speech) |
+          1: Assign('"Bring me arrows or a spare mace and I will pay fair coin," said Brann.', speech) |
+          2: Assign('"The woods north of Tambry have gone quiet. Quiet wood is never good wood."', speech)
+        ELSE END |
+    20: CASE line OF
+          0: Assign('"Mara Caskwell, brewer and keeper of debts. Apples sweeten my small beer."', speech) |
+          1: Assign('"I buy apples and sell food for road-weary folk," said Mara.', speech) |
+          2: Assign('"When strangers gather in the square, listen to what they do not say."', speech)
+        ELSE END |
+    21: CASE line OF
+          0: Assign('"Orruk carried stones for Tambry wall. Orruk likes quiet talk."', speech) |
+          1: Assign('"Orruk buys grey keys. Too many locked doors, too many worries."', speech) |
+          2: Assign('"Little humans fear big hands, but big hands built their chimneys."', speech)
+        ELSE END |
+    22: CASE line OF
+          0: Assign('"Kett Redcap ran with raiders once. Now I sell sharp things instead."', speech) |
+          1: Assign('"Dirks, maces, arrows. Coin first, questions never," said Kett.', speech) |
+          2: Assign('"If a door opens too easily, someone wanted you inside."', speech)
+        ELSE END |
+    23: CASE line OF
+          0: Assign('"Nella Hearth keeps soup on for guards, widows, and foolish heroes."', speech) |
+          1: Assign('"I do not trade much, but I know who has bread, bows, and secrets."', speech) |
+          2: Assign('"Tambry survives because everyone owes everyone else a kindness."', speech)
+        ELSE END |
+    24: CASE line OF
+          0: Assign('"Tovin Reed maps cellars. Every cellar in Tambry has a story below it."', speech) |
+          1: Assign('"I sell vials and buy curious stones when my purse allows it."', speech) |
+          2: Assign('"People enter buildings to hide. I enter them to measure the cracks."', speech)
+        ELSE END |
+    25: CASE line OF
+          0: Assign('"Borga Stoneback came for work and stayed for the tavern roof."', speech) |
+          1: Assign('"I am no merchant. Still, I know Brann pays for good tools."', speech) |
+          2: Assign('"An ogre in town hears everything. Nobody whispers quietly enough."', speech)
+        ELSE END |
+    26: CASE line OF
+          0: Assign('"Elsa Vine dries herbs above the bakery ovens."', speech) |
+          1: Assign('"Mandrake, Yarrow, Mugwort; I buy or sell when the moon is kind."', speech) |
+          2: Assign('"Never pluck Nightshade with a hungry heart."', speech)
+        ELSE END |
+    27: CASE line OF
+          0: Assign('"Perrin Quill writes letters for those who cannot face the truth aloud."', speech) |
+          1: Assign('"I trade rumors, not goods. The best rumors cost attention."', speech) |
+          2: Assign('"A priest, a ranger, and a wizard at one gate? Tambry is changing."', speech)
+        ELSE END |
+    28: CASE line OF
+          0: Assign('"Grum Barley once broke siege stones. Now I break stale bread."', speech) |
+          1: Assign('"I sell food and buy apples. Hunger is the only honest tax."', speech) |
+          2: Assign('"When folk gather in threes, the fourth is usually trouble."', speech)
+        ELSE END |
+    29: CASE line OF
+          0: Assign('"Lysa Doorward oils hinges and remembers which doors should stay shut."', speech) |
+          1: Assign('"Unlocked doors remember kindness better than people do."', speech) |
+          2: Assign('"I saw a key turn by itself once. I have slept poorly since."', speech)
+        ELSE END |
+    30: CASE line OF
+          0: Assign('"Hobb Flint sharpens blades on the church step when the priest is away."', speech) |
+          1: Assign('"I sell maces and arrows, and I buy spare weapons for repair."', speech) |
+          2: Assign('"A dull blade tells me its owner expects luck to fight for him."', speech)
+        ELSE END |
+    31: CASE line OF
+          0: Assign('"Anka Blueglass bottles lamp oil, rainwater, and things she will not name."', speech) |
+          1: Assign('"Vials for sale, gems bought quietly," said Anka.', speech) |
+          2: Assign('"Glass remembers heat. People remember fear."', speech)
+        ELSE END |
+    32: CASE line OF
+          0: Assign('"Rusk Fen ferried refugees before the marsh road sank."', speech) |
+          1: Assign('"I have no stall, but I know where the road floods first."', speech) |
+          2: Assign('"If you smell sweet water in a swamp, turn around."', speech)
+        ELSE END |
+    33: CASE line OF
+          0: Assign('"Maud Ash sweeps the temple and sells what mourners leave behind."', speech) |
+          1: Assign('"Totems and vials, sometimes a key; prices change with my conscience."', speech) |
+          2: Assign('"The dead are polite in Tambry. It is the living who crowd the doorways."', speech)
+        ELSE END
+  ELSE
+    Assign('"Tambry keeps its own counsel."', speech)
+  END
+END TownSpeech;
+
 PROCEDURE TalkToNPC(heroX, heroY: INTEGER; VAR speech: ARRAY OF CHAR): BOOLEAN;
 VAR idx, race, speechIdx: INTEGER;
 BEGIN
   idx := FindNearestNPC(heroX, heroY);
   IF idx < 0 THEN RETURN FALSE END;
+  actors[idx].state := StStill;
+  IF IsTownNPC(actors[idx].race) THEN
+    TownSpeech(idx, speech);
+    RETURN TRUE
+  END;
   speechIdx := SelectSpeech(idx);
   IF speechIdx < 0 THEN
     speech[0] := 0C;  (* no speech — silent interaction like luck boost *)

@@ -14,6 +14,8 @@ FROM Brothers IMPORT brothers, activeBrother, HasStuff, HasWeapon,
 (* Category tab labels — always shown as top 5 in each menu *)
 CONST
   TabLabels = "ItemsMagicTalk TradeGame ";
+  TradeAllBuy = 4064;   (* slots 5-11 *)
+  TradeAllSell = 4064;  (* slots 5-11 *)
 
 (* Per-mode sub-option labels (5 chars each) *)
 CONST
@@ -27,7 +29,7 @@ CONST
   LabKeys  = "Gold GreenBlue Red  Grey White";
   LabGive  = "Gold Book Writ Bone ";
   LabFile  = "  A    B    C    D    E    F    G    H  ";
-  LabSell  = "AppleGrey ";
+  LabSell  = "AppleGrey Potn Vial MandrGem  Mace ";
   LabSpells = "Ward FreezFire Fear LightSanctHarvsHeal ";
   LabStudy = "Ward FreezFire Fear LightSanctHarvsHeal ";
   LabHerbs = "MandrWolfsMugwtYarroNightBlood";
@@ -37,6 +39,10 @@ CONST
   LabHerbSell = "MandrWolfsMugwtYarroNightBlood";
   LabScrollBuy = "Ward FreezFire Fear LightSanctHarvsHeal ";
   LabAppleBuy = "Apple";
+
+VAR
+  tradeBuyMask: INTEGER;
+  tradeSellMask: INTEGER;
 
 PROCEDURE InitMenuDef(VAR m: MenuDef; lab: ARRAY OF CHAR;
                        n, col: INTEGER);
@@ -57,10 +63,36 @@ BEGIN
   END
 END SetEnabled;
 
+PROCEDURE SlotBit(slot: INTEGER): INTEGER;
+BEGIN
+  CASE slot OF
+     5: RETURN 32 |
+     6: RETURN 64 |
+     7: RETURN 128 |
+     8: RETURN 256 |
+     9: RETURN 512 |
+    10: RETURN 1024 |
+    11: RETURN 2048 |
+    12: RETURN 4096 |
+    13: RETURN 8192 |
+    14: RETURN 16384
+  ELSE
+    RETURN 0
+  END
+END SlotBit;
+
+PROCEDURE SetTradeFilters(buyMask, sellMask: INTEGER);
+BEGIN
+  tradeBuyMask := buyMask;
+  tradeSellMask := sellMask
+END SetTradeFilters;
+
 PROCEDURE InitMenus;
 VAR i: INTEGER;
 BEGIN
   cmode := MItems;
+  tradeBuyMask := TradeAllBuy;
+  tradeSellMask := TradeAllSell;
 
   InitMenuDef(menus[MItems], LabItems, 10, 6);
   InitMenuDef(menus[MMagic], LabMagic, 15, 5);
@@ -72,7 +104,7 @@ BEGIN
   InitMenuDef(menus[MGive],  LabGive,   9, 10);
   InitMenuDef(menus[MUse],   LabUse,   14, 8);
   InitMenuDef(menus[MFile],  LabFile,  13, 5);
-  InitMenuDef(menus[MSell],  LabSell,   7, 10);
+  InitMenuDef(menus[MSell],  LabSell,  12, 10);
   InitMenuDef(menus[MSpells], LabSpells, 13, 5);
   InitMenuDef(menus[MStudy],  LabStudy,  13, 5);
   InitMenuDef(menus[MHerbs],  LabHerbs, 11, 6);
@@ -163,9 +195,8 @@ BEGIN
   (* File: 5-12 = slots A-H *)
   FOR i := 5 TO 12 DO SetEnabled(menus[MFile], i, 10) END;
 
-  (* Sell: 5=Apple, 6=Grey key *)
-  SetEnabled(menus[MSell], 5, 8);
-  SetEnabled(menus[MSell], 6, 8);
+  (* Sell: Apple, Grey key, Potion, Vial, Mandrake, Gem, Mace *)
+  FOR i := 5 TO 11 DO SetEnabled(menus[MSell], i, 8) END;
 
   (* Spells: entries are shown once their scroll has been collected. *)
   FOR i := 5 TO 12 DO SetEnabled(menus[MSpells], i, 0) END;
@@ -294,9 +325,37 @@ BEGIN
   menus[MGive].enabled[7] := SF(28);
   menus[MGive].enabled[8] := SF(29);
 
-  (* SELL: 5=Apple, 6=Grey key *)
-  menus[MSell].enabled[5] := SF(24);
-  menus[MSell].enabled[6] := SF(20);
+  (* BUY: hide goods the current trading partner does not sell. *)
+  FOR i := 5 TO 11 DO
+    IF BAND(CARDINAL(tradeBuyMask), CARDINAL(SlotBit(i))) # 0 THEN
+      menus[MBuy].enabled[i] := 10
+    ELSE
+      menus[MBuy].enabled[i] := 0
+    END
+  END;
+
+  (* SELL: hide goods the current trading partner does not buy. *)
+  IF BAND(CARDINAL(tradeSellMask), CARDINAL(SlotBit(5))) # 0 THEN
+    menus[MSell].enabled[5] := SF(24)
+  ELSE menus[MSell].enabled[5] := 0 END;
+  IF BAND(CARDINAL(tradeSellMask), CARDINAL(SlotBit(6))) # 0 THEN
+    menus[MSell].enabled[6] := SF(20)
+  ELSE menus[MSell].enabled[6] := 0 END;
+  IF BAND(CARDINAL(tradeSellMask), CARDINAL(SlotBit(7))) # 0 THEN
+    menus[MSell].enabled[7] := StuffFlag(ItemPotion)
+  ELSE menus[MSell].enabled[7] := 0 END;
+  IF BAND(CARDINAL(tradeSellMask), CARDINAL(SlotBit(8))) # 0 THEN
+    menus[MSell].enabled[8] := SF(11)
+  ELSE menus[MSell].enabled[8] := 0 END;
+  IF BAND(CARDINAL(tradeSellMask), CARDINAL(SlotBit(9))) # 0 THEN
+    menus[MSell].enabled[9] := SF(StMandrake)
+  ELSE menus[MSell].enabled[9] := 0 END;
+  IF BAND(CARDINAL(tradeSellMask), CARDINAL(SlotBit(10))) # 0 THEN
+    menus[MSell].enabled[10] := StuffFlag(ItemGem)
+  ELSE menus[MSell].enabled[10] := 0 END;
+  IF BAND(CARDINAL(tradeSellMask), CARDINAL(SlotBit(11))) # 0 THEN
+    menus[MSell].enabled[11] := SF(1)
+  ELSE menus[MSell].enabled[11] := 0 END;
 
   (* HERB SELL: 5-10 = magical ingredients. *)
   menus[MHerbSell].enabled[5] := SF(StMandrake);

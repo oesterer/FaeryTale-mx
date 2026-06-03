@@ -37,7 +37,8 @@ FROM Menu IMPORT cmode, menus, realOptions, optionCount, MaxOpts,
                  PanelX, PanelY, BtnW, BtnH;
 FROM HudFont IMPORT DrawHudStr, DrawMenuStr;
 FROM WorldObj IMPORT objTex;
-FROM NPC IMPORT GetSetfigSprite, PrayerSkeletonRace;
+FROM NPC IMPORT GetSetfigSprite, PrayerSkeletonRace,
+                IsTownNPC, TownNPCSpriteRace;
 FROM Carrier IMPORT riding, RideSwan;
 FROM DebugMap IMPORT GetTileMapColor;
 FROM HudLog IMPORT GetLine, GetStatBrv, GetStatLck, GetStatKnd,
@@ -921,7 +922,7 @@ BEGIN
 END GetStateIdx;
 
 PROCEDURE DrawActorBody(i, sx, sy: INTEGER);
-VAR frame, texIdx, stateIdx, mx, my, npcBank, npcFrame: INTEGER;
+VAR frame, texIdx, stateIdx, mx, my, npcBank, npcFrame, originalRace: INTEGER;
 BEGIN
   IF (i = 0) AND (actors[i].state = StFall) THEN
     (* Falling animation — drawn from shape_9 (enemyTex[3]).
@@ -985,13 +986,37 @@ BEGIN
      (fmain.c:3578 — goto nomask for race 0x85, 0x87). *)
   IF actors[i].actorType = TypeSetfig THEN
     (* Dead setfigs don't render *)
-    IF actors[i].state = StDead THEN RETURN END;
+    IF (actors[i].state = StDead) OR (NOT actors[i].visible) THEN RETURN END;
     IF actors[i].race = PrayerSkeletonRace THEN
       (* Skeleton NPCs use the odd-race half of the wraith/skeleton sheet. *)
       frame := GetEnemyFrame(i);
       IF BAND(CARDINAL(frame), 1) = 0 THEN INC(frame) END;
       DrawEnemySprite(i, 1, frame, sx, sy);
       RETURN
+    END;
+    IF IsTownNPC(actors[i].race) THEN
+      IF TownNPCSpriteRace(actors[i].race) = 8 THEN
+        IF npcTex[2] # NIL THEN
+          SetColorMod(npcTex[2], fadeR, fadeG, fadeB);
+          BuildSpriteMaskFor(i);
+          FOR my := 0 TO SprH - 1 DO
+            FOR mx := 0 TO SprW - 1 DO
+              IF bmask[mx][my] THEN
+                DrawTexRegion(npcTex[2], mx, my, 1, 1, sx + S(mx), sy + S(my), Scale, Scale)
+              END
+            END
+          END
+        END;
+        RETURN
+      ELSE
+        originalRace := actors[i].race;
+        actors[i].race := TownNPCSpriteRace(originalRace);
+        frame := GetEnemyFrame(i);
+        texIdx := RaceToTexIdx(actors[i].race);
+        DrawEnemySprite(i, texIdx, frame, sx, sy);
+        actors[i].race := originalRace;
+        RETURN
+      END
     END;
     GetSetfigSprite(actors[i].race, npcBank, npcFrame);
     (* Witch (race 9): animated — frame = facing / 2. Original line 1993.
