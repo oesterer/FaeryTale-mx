@@ -1,6 +1,6 @@
 IMPLEMENTATION MODULE GameState;
 
-FROM Strings IMPORT Assign, Concat;
+FROM Strings IMPORT Assign, Concat, Length;
 FROM InOut IMPORT WriteString, WriteInt, WriteLn;
 FROM Platform IMPORT PollInput, InputState, DirN, DirNE, DirE, DirSE,
                     DirS, DirSW, DirW, DirNW, DirNone,
@@ -67,6 +67,10 @@ FROM Quest IMPORT CheckRescue, CheckWinCondition, ShowWinScreen,
 FROM Missile IMPORT InitMissiles, UpdateMissiles, FireMissile;
 FROM Narration IMPORT InitPlace, UpdatePlace, Event;
 
+CONST
+  LootGold = -1;
+  LootMaxKinds = 32;
+
 VAR
   input: InputState;
   potionCooldown: INTEGER;
@@ -92,6 +96,10 @@ VAR
   sanctuaryTimer: INTEGER;
   nameBuf: ARRAY [0..31] OF CHAR;
   msgBuf: ARRAY [0..79] OF CHAR;
+  lootActive: BOOLEAN;
+  lootCodes: ARRAY [0..31] OF INTEGER;
+  lootQty: ARRAY [0..31] OF INTEGER;
+  lootKinds: INTEGER;
 
   (* Treasure probability table *)
   treasureProbs: ARRAY [0..39] OF INTEGER;
@@ -170,6 +178,8 @@ BEGIN
   freezeTimer := 0;
   wardTimer := 0;
   sanctuaryTimer := 0;
+  lootActive := FALSE;
+  lootKinds := 0;
   fairyActive := FALSE;
   fairyX := 0;
   colorPlayTimer := 0;
@@ -324,16 +334,123 @@ BEGIN
   ELSE Assign("a treasure", name) END
 END TreasureName;
 
+PROCEDURE LootName(code: INTEGER; VAR name: ARRAY OF CHAR);
+BEGIN
+  CASE code OF
+    LootGold: Assign("Gold", name) |
+     0: Assign("Dagger", name) | 1: Assign("Mace", name) |
+     2: Assign("Sword", name) | 3: Assign("Bow", name) |
+     4: Assign("Wand", name) | 5: Assign("Golden Lasso", name) |
+     6: Assign("Sea Shell", name) | 7: Assign("Sun Stone", name) |
+     8: Assign("Arrows", name) | 9: Assign("Blue Stone", name) |
+    10: Assign("Green Jewel", name) | 11: Assign("Glass Vial", name) |
+    12: Assign("Crystal Orb", name) | 13: Assign("Bird Totem", name) |
+    14: Assign("Gold Ring", name) | 15: Assign("Jade Skull", name) |
+    16: Assign("Gold Key", name) | 17: Assign("Green Key", name) |
+    18: Assign("Blue Key", name) | 19: Assign("Red Key", name) |
+    20: Assign("Grey Key", name) | 21: Assign("White Key", name) |
+    22: Assign("Talisman", name) | 24: Assign("Apple", name) |
+    25: Assign("Gold Statue", name) | 29: Assign("King's Bone", name) |
+    30: Assign("Shard", name) |
+    StMandrake: Assign("Mandrake", name) |
+    StWolfsbane: Assign("Wolfsbane", name) |
+    StMugwort: Assign("Mugwort", name) |
+    StYarrow: Assign("Yarrow", name) |
+    StNightshade: Assign("Nightshade", name) |
+    StBloodroot: Assign("Bloodroot", name) |
+    StWardScroll: Assign("Ward Scroll", name) |
+    StFreezeScroll: Assign("Freeze Scroll", name) |
+    StFireScroll: Assign("Fire Scroll", name) |
+    StFearScroll: Assign("Fear Scroll", name) |
+    StLightScroll: Assign("Light Scroll", name) |
+    StSanctuaryScroll: Assign("Sanctuary Scroll", name) |
+    StHarvestScroll: Assign("Harvest Scroll", name) |
+    StHealScroll: Assign("Heal Scroll", name)
+  ELSE Assign("Item", name) END
+END LootName;
+
+PROCEDURE BeginLootSummary;
+VAR i: INTEGER;
+BEGIN
+  lootActive := TRUE; lootKinds := 0;
+  FOR i := 0 TO LootMaxKinds - 1 DO
+    lootCodes[i] := 0; lootQty[i] := 0
+  END
+END BeginLootSummary;
+
+PROCEDURE EndLootSummary;
+BEGIN
+  lootActive := FALSE
+END EndLootSummary;
+
+PROCEDURE AddLoot(code, qty: INTEGER);
+VAR i: INTEGER;
+BEGIN
+  IF (NOT lootActive) OR (qty <= 0) THEN RETURN END;
+  FOR i := 0 TO lootKinds - 1 DO
+    IF lootCodes[i] = code THEN
+      INC(lootQty[i], qty); RETURN
+    END
+  END;
+  IF lootKinds < LootMaxKinds THEN
+    lootCodes[lootKinds] := code;
+    lootQty[lootKinds] := qty;
+    INC(lootKinds)
+  END
+END AddLoot;
+
+PROCEDURE BuildLootEntry(code, qty: INTEGER; VAR entry: ARRAY OF CHAR);
+VAR numStr, itemName: ARRAY [0..31] OF CHAR;
+BEGIN
+  IntToStr(qty, numStr);
+  Assign(numStr, entry); Concat(entry, " ", entry);
+  LootName(code, itemName); Concat(entry, itemName, entry)
+END BuildLootEntry;
+
+PROCEDURE ShowLootSummary(prefix, emptyMsg: ARRAY OF CHAR);
+VAR i, hidden, shown: INTEGER;
+    entry, more: ARRAY [0..47] OF CHAR;
+BEGIN
+  IF lootKinds = 0 THEN
+    ShowMessage(emptyMsg); RETURN
+  END;
+  Assign(prefix, msgBuf);
+  hidden := 0; shown := 0;
+  FOR i := 0 TO lootKinds - 1 DO
+    BuildLootEntry(lootCodes[i], lootQty[i], entry);
+    IF Length(msgBuf) + Length(entry) + 3 < 76 THEN
+      IF shown > 0 THEN Concat(msgBuf, ", ", msgBuf) END;
+      Concat(msgBuf, entry, msgBuf);
+      INC(shown)
+    ELSE
+      INC(hidden, lootQty[i])
+    END
+  END;
+  IF hidden > 0 THEN
+    IntToStr(hidden, more);
+    IF Length(msgBuf) + Length(more) + 8 < 76 THEN
+      IF shown > 0 THEN Concat(msgBuf, ", ", msgBuf) END;
+      Concat(msgBuf, "+", msgBuf); Concat(msgBuf, more, msgBuf);
+      Concat(msgBuf, " more", msgBuf)
+    END
+  END;
+  Concat(msgBuf, ".", msgBuf);
+  ShowMessage(msgBuf)
+END ShowLootSummary;
+
 PROCEDURE TakeEnemyWeapon(enemyIdx: INTEGER; VAR name: ARRAY OF CHAR): BOOLEAN;
-VAR w: INTEGER;
+VAR w, arrows: INTEGER;
 BEGIN
   w := actors[enemyIdx].weapon;
   IF (w < 1) OR (w > 5) THEN RETURN FALSE END;
   GiveStuff(w - 1);
+  AddLoot(w - 1, 1);
   WeaponName(w, name);
   IF w > actors[0].weapon THEN actors[0].weapon := w END;
   IF w = 4 THEN
-    AddStuffN(8, (cycle MOD 8) + 2)
+    arrows := (cycle MOD 8) + 2;
+    AddStuffN(8, arrows);
+    AddLoot(8, arrows)
   END;
   actors[enemyIdx].weapon := 0;
   RETURN TRUE
@@ -361,21 +478,24 @@ BEGIN
   END;
   IF ti <= 0 THEN RETURN FALSE END;
   IF race = 2 THEN
-    GiveStuff(ti); TreasureName(ti, name)
+    GiveStuff(ti); AddLoot(ti, 1); TreasureName(ti, name)
   ELSIF ti >= 31 THEN
     gv := GoldValue(ti); AddWealth(gv);
+    AddLoot(LootGold, gv);
     IntToStr(gv, name); Concat(name, " Gold Pieces", name)
   ELSE
-    GiveStuff(ti); TreasureName(ti, name)
+    GiveStuff(ti); AddLoot(ti, 1); TreasureName(ti, name)
   END;
   RETURN TRUE
 END TakeEnemyTreasure;
 
 PROCEDURE SearchNearbyCorpses;
-VAR i, dx, dy: INTEGER;
+VAR i, dx, dy, bodyCount, lootCount: INTEGER;
     wname, tname: ARRAY [0..31] OF CHAR;
     hasWeapon, hasTreasure: BOOLEAN;
 BEGIN
+  bodyCount := 0; lootCount := 0;
+  BeginLootSummary;
   FOR i := 1 TO actorCount - 1 DO
     IF (actors[i].actorType = TypeEnemy) AND (actors[i].state = StDead) THEN
       dx := actors[0].absX - actors[i].absX;
@@ -383,21 +503,24 @@ BEGIN
       IF dx < 0 THEN dx := -dx END;
       IF dy < 0 THEN dy := -dy END;
       IF (dx < 20) AND (dy < 20) THEN
+        INC(bodyCount);
         hasWeapon := TakeEnemyWeapon(i, wname);
         hasTreasure := TakeEnemyTreasure(i, tname);
-        Assign("% searched the body and found ", msgBuf);
-        IF hasWeapon THEN
-          Concat(msgBuf, wname, msgBuf);
-          IF hasTreasure THEN Concat(msgBuf, " and ", msgBuf); Concat(msgBuf, tname, msgBuf) END
-        ELSIF hasTreasure THEN Concat(msgBuf, tname, msgBuf)
-        ELSE Concat(msgBuf, "nothing", msgBuf) END;
-        Concat(msgBuf, ".", msgBuf);
-        ShowMessage(msgBuf);
-        SetOptions; RETURN
+        IF hasWeapon THEN INC(lootCount) END;
+        IF hasTreasure THEN INC(lootCount) END
       END
     END
   END;
-  ShowMessage("Nothing to take.")
+  EndLootSummary;
+  IF lootCount > 0 THEN
+    ShowLootSummary("% found ", "Nothing to take.");
+    SetOptions
+  ELSIF bodyCount > 0 THEN
+    ShowMessage("% searched nearby bodies and found nothing.");
+    SetOptions
+  ELSE
+    ShowMessage("Nothing to take.")
+  END
 END SearchNearbyCorpses;
 
 PROCEDURE RandContainer(limit: INTEGER): INTEGER;
@@ -424,19 +547,20 @@ BEGIN
   IF k = 0 THEN ShowMessage("nothing.")
   ELSIF k = 1 THEN
     i := PickContainerItem();
-    GiveStuff(i); TreasureName(i, tname);
+    GiveStuff(i); AddLoot(i, 1); TreasureName(i, tname);
     Assign(tname, msgBuf); Concat(msgBuf, ".", msgBuf);
     ShowMessage(msgBuf)
   ELSIF k = 2 THEN
     i := PickContainerItem();
     IF i = 8 THEN
       gv := 100; AddWealth(gv);
+      AddLoot(LootGold, gv);
       IntToStr(gv, numStr); Assign(numStr, msgBuf); Concat(msgBuf, " Gold Pieces", msgBuf)
-    ELSE GiveStuff(i); TreasureName(i, tname); Assign(tname, msgBuf)
+    ELSE GiveStuff(i); AddLoot(i, 1); TreasureName(i, tname); Assign(tname, msgBuf)
     END;
     j := PickContainerItem();
     WHILE j = i DO j := PickContainerItem() END;
-    GiveStuff(j); TreasureName(j, tname);
+    GiveStuff(j); AddLoot(j, 1); TreasureName(j, tname);
     Concat(msgBuf, " and ", msgBuf); Concat(msgBuf, tname, msgBuf);
     Concat(msgBuf, ".", msgBuf); ShowMessage(msgBuf)
   ELSE
@@ -451,10 +575,11 @@ BEGIN
         IF k = 22 THEN k := 16
         ELSIF k = 23 THEN k := 20
         END;
-        GiveStuff(k)
+        GiveStuff(k); AddLoot(k, 1)
       END
     ELSE
       GiveStuff(i); GiveStuff(i); GiveStuff(i);
+      AddLoot(i, 3);
       TreasureName(i, tname);
       Assign("3 ", msgBuf); Concat(msgBuf, tname, msgBuf);
       Concat(msgBuf, "s.", msgBuf); ShowMessage(msgBuf)
@@ -906,6 +1031,7 @@ VAR i, id, dx, dy, count: INTEGER;
     itemName: ARRAY [0..31] OF CHAR;
 BEGIN
   count := 0;
+  BeginLootSummary;
   FOR i := 0 TO objCount - 1 DO
     IF ((objects[i].status = 1) OR (objects[i].status = 5)) AND
        ((objects[i].region = currentRegion) OR (objects[i].region = -1)) THEN
@@ -916,32 +1042,48 @@ BEGIN
       IF (dx < 100) AND (dy < 100) THEN
         id := objects[i].objId; picked := TRUE;
         CASE id OF
-          13: AddWealth(50) |
+          13: AddWealth(50); AddLoot(LootGold, 50) |
           14, 15, 16: ContainerLoot |
-          17: GiveStuff(14) | 18: GiveStuff(9) | 19: GiveStuff(10) |
-          22: GiveStuff(11) | 23: GiveStuff(13) | 24: GiveStuff(15) |
-          25: GiveStuff(16) | 26: GiveStuff(20) |
-          11: AddStuffN(8, 10) |
-           8: GiveStuff(2) | 9: GiveStuff(1) | 10: GiveStuff(3) |
-          12: GiveStuff(0) | 114: GiveStuff(18) | 145: GiveStuff(4) |
-         148: GiveStuff(24) | 149: GiveStuff(25) | 151: GiveStuff(6) |
-         153: GiveStuff(17) | 154: GiveStuff(21) | 242: GiveStuff(19) |
-          27: SetStuff(5, 1) | 138: SetStuff(29, 1) |
-         139: SetStuff(22, 1) | 140: SetStuff(30, 1) | 155: SetStuff(7, 1) |
-         ObjMandrake: GiveStuff(StMandrake) |
-         ObjWolfsbane: GiveStuff(StWolfsbane) |
-         ObjMugwort: GiveStuff(StMugwort) |
-         ObjYarrow: GiveStuff(StYarrow) |
-         ObjNightshade: GiveStuff(StNightshade) |
-         ObjBloodroot: GiveStuff(StBloodroot) |
-         ObjWardScroll: GiveStuff(StWardScroll) |
-         ObjFreezeScroll: GiveStuff(StFreezeScroll) |
-         ObjFireScroll: GiveStuff(StFireScroll) |
-         ObjFearScroll: GiveStuff(StFearScroll) |
-         ObjLightScroll: GiveStuff(StLightScroll) |
-         ObjSanctuaryScroll: GiveStuff(StSanctuaryScroll) |
-         ObjHarvestScroll: GiveStuff(StHarvestScroll) |
-         ObjHealScroll: GiveStuff(StHealScroll)
+          17: GiveStuff(14); AddLoot(14, 1) |
+          18: GiveStuff(9); AddLoot(9, 1) |
+          19: GiveStuff(10); AddLoot(10, 1) |
+          22: GiveStuff(11); AddLoot(11, 1) |
+          23: GiveStuff(13); AddLoot(13, 1) |
+          24: GiveStuff(15); AddLoot(15, 1) |
+          25: GiveStuff(16); AddLoot(16, 1) |
+          26: GiveStuff(20); AddLoot(20, 1) |
+          11: AddStuffN(8, 10); AddLoot(8, 10) |
+           8: GiveStuff(2); AddLoot(2, 1) |
+           9: GiveStuff(1); AddLoot(1, 1) |
+          10: GiveStuff(3); AddLoot(3, 1) |
+          12: GiveStuff(0); AddLoot(0, 1) |
+         114: GiveStuff(18); AddLoot(18, 1) |
+         145: GiveStuff(4); AddLoot(4, 1) |
+         148: GiveStuff(24); AddLoot(24, 1) |
+         149: GiveStuff(25); AddLoot(25, 1) |
+         151: GiveStuff(6); AddLoot(6, 1) |
+         153: GiveStuff(17); AddLoot(17, 1) |
+         154: GiveStuff(21); AddLoot(21, 1) |
+         242: GiveStuff(19); AddLoot(19, 1) |
+          27: SetStuff(5, 1); AddLoot(5, 1) |
+         138: SetStuff(29, 1); AddLoot(29, 1) |
+         139: SetStuff(22, 1); AddLoot(22, 1) |
+         140: SetStuff(30, 1); AddLoot(30, 1) |
+         155: SetStuff(7, 1); AddLoot(7, 1) |
+         ObjMandrake: GiveStuff(StMandrake); AddLoot(StMandrake, 1) |
+         ObjWolfsbane: GiveStuff(StWolfsbane); AddLoot(StWolfsbane, 1) |
+         ObjMugwort: GiveStuff(StMugwort); AddLoot(StMugwort, 1) |
+         ObjYarrow: GiveStuff(StYarrow); AddLoot(StYarrow, 1) |
+         ObjNightshade: GiveStuff(StNightshade); AddLoot(StNightshade, 1) |
+         ObjBloodroot: GiveStuff(StBloodroot); AddLoot(StBloodroot, 1) |
+         ObjWardScroll: GiveStuff(StWardScroll); AddLoot(StWardScroll, 1) |
+         ObjFreezeScroll: GiveStuff(StFreezeScroll); AddLoot(StFreezeScroll, 1) |
+         ObjFireScroll: GiveStuff(StFireScroll); AddLoot(StFireScroll, 1) |
+         ObjFearScroll: GiveStuff(StFearScroll); AddLoot(StFearScroll, 1) |
+         ObjLightScroll: GiveStuff(StLightScroll); AddLoot(StLightScroll, 1) |
+         ObjSanctuaryScroll: GiveStuff(StSanctuaryScroll); AddLoot(StSanctuaryScroll, 1) |
+         ObjHarvestScroll: GiveStuff(StHarvestScroll); AddLoot(StHarvestScroll, 1) |
+         ObjHealScroll: GiveStuff(StHealScroll); AddLoot(StHealScroll, 1)
         ELSE
           picked := FALSE
         END;
@@ -962,11 +1104,8 @@ BEGIN
     END
   END;
   SetOptions;
-  IntToStr(count, nameBuf);
-  Assign("Harvest gathered ", msgBuf);
-  Concat(msgBuf, nameBuf, msgBuf);
-  Concat(msgBuf, " nearby items.", msgBuf);
-  ShowMessage(msgBuf)
+  EndLootSummary;
+  ShowLootSummary("Harvest gathered: ", "Harvest gathered nothing.")
 END HarvestNearby;
 
 PROCEDURE HandleSpell(optIdx: INTEGER);
