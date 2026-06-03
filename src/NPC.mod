@@ -184,7 +184,7 @@ END InitSpeeches;
 (* --- Materialization --- *)
 
 PROCEDURE MaterializeNPCs(heroX, heroY, region: INTEGER);
-VAR i, dx, dy, idx, race, seq: INTEGER;
+VAR i, dx, dy, idx, race, seq, range: INTEGER;
 BEGIN
   seq := 0;  (* sequential index per NPC — used as goal for speech variation *)
   FOR i := 0 TO objCount - 1 DO
@@ -195,12 +195,13 @@ BEGIN
       IF dx < 0 THEN dx := -dx END;
       IF dy < 0 THEN dy := -dy END;
 
-      IF (dx < 400) AND (dy < 400) THEN
+      race := objects[i].objId;
+      IF IsTownNPC(race) THEN range := 1200 ELSE range := 400 END;
+      IF (dx < range) AND (dy < range) THEN
         (* Close enough — materialize if not already *)
         IF NOT materialized[i] THEN
           IF actorCount < MaxActors THEN
             idx := actorCount;
-            race := objects[i].objId;
             IF race >= MaxNPCs THEN race := 0 END;  (* clamp to setfig table *)
             actors[idx].absX := objects[i].x;
             actors[idx].absY := objects[i].y;
@@ -236,21 +237,21 @@ END MaterializeNPCs;
 PROCEDURE TownHome(n: INTEGER; VAR x, y: INTEGER);
 BEGIN
   CASE n OF
-     0: x := 18740; y := 15690 |
-     1: x := 18960; y := 15840 |
-     2: x := 19120; y := 15480 |
-     3: x := 19580; y := 15790 |
-     4: x := 19830; y := 15390 |
-     5: x := 20120; y := 15180 |
-     6: x := 20420; y := 15740 |
-     7: x := 20720; y := 15440 |
-     8: x := 21020; y := 15810 |
-     9: x := 21320; y := 15380 |
-    10: x := 21620; y := 15690 |
-    11: x := 21920; y := 15420 |
-    12: x := 22220; y := 15820 |
-    13: x := 22520; y := 15540 |
-    14: x := 22820; y := 15770
+     0: x := 18732; y := 15456 |
+     1: x := 18892; y := 15456 |
+     2: x := 19052; y := 15456 |
+     3: x := 19212; y := 15456 |
+     4: x := 19372; y := 15456 |
+     5: x := 19532; y := 15456 |
+     6: x := 19692; y := 15456 |
+     7: x := 19852; y := 15456 |
+     8: x := 18796; y := 15552 |
+     9: x := 18956; y := 15552 |
+    10: x := 19116; y := 15552 |
+    11: x := 19276; y := 15552 |
+    12: x := 19436; y := 15552 |
+    13: x := 19596; y := 15552 |
+    14: x := 19756; y := 15552
   ELSE
     x := 19386; y := 15750
   END
@@ -274,7 +275,7 @@ BEGIN
     1: x := 20033; y := 14401 |
     2: x := 21626; y := 15446 |
     3: x := 20720; y := 15440 |
-    4: x := 18310; y := 15969
+    4: x := 18732; y := 15456
   ELSE
     x := 19298; y := 16128
   END
