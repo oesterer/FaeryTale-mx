@@ -1766,6 +1766,7 @@ BEGIN
       actors[0].absY := 34950;
       SwitchRegion(9);
       actorCount := 1;
+      ResetMaterialized;
       ShowMessage("The ground swallows you up!");
       RETURN
     END
@@ -1986,7 +1987,8 @@ BEGIN
         dayPeriod := 4;  (* sync period so morning announcement doesn't fire *)
         lightTimer := 0; secretTimer := 0; freezeTimer := 0;
         wardTimer := 0; sanctuaryTimer := 0;
-        actorCount := 1;  (* clear enemies *)
+        actorCount := 1;  (* clear enemies and materialized NPC actors *)
+        ResetMaterialized;
         deathTimer := 0;
         ShowMessage("The good fairy has revived you!")
       ELSE
@@ -2015,6 +2017,7 @@ BEGIN
           SwitchRegion(3);
           InitPlace(actors[0].absX, actors[0].absY, 3);
           actorCount := 1;
+          ResetMaterialized;
           Event(9);
           IF activeBrother = 1 THEN Event(10)
           ELSIF activeBrother = 2 THEN Event(11) END;
@@ -2192,6 +2195,15 @@ BEGIN
   input.attack := FALSE; input.usePotion := FALSE;
   input.useFood := FALSE; input.talk := FALSE; input.toggleMap := FALSE;
   PollInput(input);
+  IF input.menuKey = CHR(27) THEN
+    WriteString("Player coordinates: x=");
+    WriteInt(actors[0].absX, 0);
+    WriteString(" y=");
+    WriteInt(actors[0].absY, 0);
+    WriteString(" region=");
+    WriteInt(currentRegion, 0);
+    WriteLn
+  END;
   IF (input.dirKey = DirNone) AND input.mouseMove THEN
     input.dirKey := PointerDirection(input.mouseX, input.mouseY)
   END;
