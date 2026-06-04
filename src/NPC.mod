@@ -34,6 +34,16 @@ VAR
   (* Speech table — transcribed from original narr.c speeches[] *)
   speeches: ARRAY [0..68] OF ARRAY [0..255] OF CHAR;
 
+CONST
+  TambryNpcMinX = 18670;
+  TambryNpcMaxX = 19322;
+  TambryNpcMinY = 15283;
+  TambryNpcMaxY = 16122;
+  TambrySpawnMinX = 18784;
+  TambrySpawnMaxX = 18942;
+  TambrySpawnMinY = 15617;
+  TambrySpawnMaxY = 15745;
+
 PROCEDURE IsTownNPC(race: INTEGER): BOOLEAN;
 BEGIN
   RETURN (race >= TambryNpcStart) AND (race <= TambryNpcEnd)
@@ -203,17 +213,24 @@ BEGIN
           IF actorCount < MaxActors THEN
             idx := actorCount;
             IF race >= MaxNPCs THEN race := 0 END;  (* clamp to setfig table *)
-            actors[idx].absX := objects[i].x;
-            actors[idx].absY := objects[i].y;
             actors[idx].actorType := TypeSetfig;
             actors[idx].race := race;
             actors[idx].state := StStill;
             IF IsTownNPC(race) THEN
+              IF InTambryCity(objects[i].x, objects[i].y) AND
+                 CanTownStand(objects[i].x, objects[i].y) THEN
+                actors[idx].absX := objects[i].x;
+                actors[idx].absY := objects[i].y
+              ELSE
+                TownHome(race - TambryNpcStart, actors[idx].absX, actors[idx].absY)
+              END;
               actors[idx].goal := race - TambryNpcStart;
               actors[idx].tactic := 60 + (race - TambryNpcStart) * 9;
               actors[idx].velX := (race - TambryNpcStart) MOD 4;
               actors[idx].velY := 0
             ELSE
+              actors[idx].absX := objects[i].x;
+              actors[idx].absY := objects[i].y;
               actors[idx].goal := seq;
               actors[idx].tactic := 0;
               actors[idx].velX := 0;
@@ -235,55 +252,70 @@ BEGIN
 END MaterializeNPCs;
 
 PROCEDURE TownHome(n: INTEGER; VAR x, y: INTEGER);
+VAR sx, sy: INTEGER; found: BOOLEAN;
 BEGIN
   CASE n OF
-     0: x := 18732; y := 15456 |
-     1: x := 18892; y := 15456 |
-     2: x := 19052; y := 15456 |
-     3: x := 19212; y := 15456 |
-     4: x := 19372; y := 15456 |
-     5: x := 19532; y := 15456 |
-     6: x := 19692; y := 15456 |
-     7: x := 19852; y := 15456 |
-     8: x := 18796; y := 15552 |
-     9: x := 18956; y := 15552 |
-    10: x := 19116; y := 15552 |
-    11: x := 19276; y := 15552 |
-    12: x := 19436; y := 15552 |
-    13: x := 19596; y := 15552 |
-    14: x := 19756; y := 15552
+     0: x := TambrySpawnMinX; y := TambrySpawnMinY |
+     1: x := 18824; y := TambrySpawnMinY |
+     2: x := 18864; y := TambrySpawnMinY |
+     3: x := 18904; y := TambrySpawnMinY |
+     4: x := TambrySpawnMaxX; y := TambrySpawnMinY |
+     5: x := TambrySpawnMinX; y := 15681 |
+     6: x := 18824; y := 15681 |
+     7: x := 18864; y := 15681 |
+     8: x := 18904; y := 15681 |
+     9: x := TambrySpawnMaxX; y := 15681 |
+    10: x := TambrySpawnMinX; y := TambrySpawnMaxY |
+    11: x := 18824; y := TambrySpawnMaxY |
+    12: x := 18864; y := TambrySpawnMaxY |
+    13: x := 18904; y := TambrySpawnMaxY |
+    14: x := TambrySpawnMaxX; y := TambrySpawnMaxY
   ELSE
-    x := 19386; y := 15750
+    x := 18864; y := 15681
+  END;
+  IF NOT CanTownStand(x, y) THEN
+    found := FALSE;
+    sy := TambrySpawnMinY;
+    WHILE (sy <= TambrySpawnMaxY) AND (NOT found) DO
+      sx := TambrySpawnMinX;
+      WHILE (sx <= TambrySpawnMaxX) AND (NOT found) DO
+        IF CanTownStand(sx, sy) THEN
+          x := sx; y := sy; found := TRUE
+        END;
+        INC(sx, 8)
+      END;
+      INC(sy, 8)
+    END
   END
 END TownHome;
 
 PROCEDURE TownGroup(n: INTEGER; VAR x, y: INTEGER);
 BEGIN
   CASE n MOD 3 OF
-    0: x := 19386; y := 15750 |
-    1: x := 20240; y := 15480 |
-    2: x := 21480; y := 15620
+    0: x := 19300; y := 15750 |
+    1: x := 18980; y := 15880 |
+    2: x := 18780; y := 15620
   ELSE
-    x := 19386; y := 15750
+    x := 19300; y := 15750
   END
 END TownGroup;
 
 PROCEDURE TownDoor(n: INTEGER; VAR x, y: INTEGER);
 BEGIN
   CASE n MOD 5 OF
-    0: x := 19298; y := 16128 |
-    1: x := 20033; y := 14401 |
-    2: x := 21626; y := 15446 |
-    3: x := 20720; y := 15440 |
+    0: x := 19298; y := 16112 |
+    1: x := 19120; y := 15320 |
+    2: x := 19300; y := 15446 |
+    3: x := 18820; y := 15340 |
     4: x := 18732; y := 15456
   ELSE
-    x := 19298; y := 16128
+    x := 19298; y := 16112
   END
 END TownDoor;
 
 PROCEDURE TownMarket(n: INTEGER; VAR x, y: INTEGER);
 BEGIN
-  x := 19020 + (n MOD 6) * 420;
+  x := 18720 + (n MOD 6) * 110;
   y := 15680 + (n MOD 2) * 130
 END TownMarket;
 
@@ -310,8 +342,8 @@ END FacePlayer;
 
 PROCEDURE InTambryCity(x, y: INTEGER): BOOLEAN;
 BEGIN
-  RETURN (x >= 18100) AND (x <= 23100) AND
-         (y >= 14200) AND (y <= 16300)
+  RETURN (x >= TambryNpcMinX) AND (x <= TambryNpcMaxX) AND
+         (y >= TambryNpcMinY) AND (y <= TambryNpcMaxY)
 END InTambryCity;
 
 PROCEDURE CanTownStand(x, y: INTEGER): BOOLEAN;
@@ -362,6 +394,13 @@ BEGIN
   FOR i := 1 TO actorCount - 1 DO
     IF (actors[i].actorType = TypeSetfig) AND IsTownNPC(actors[i].race) THEN
       n := actors[i].race - TambryNpcStart;
+      IF NOT InTambryCity(actors[i].absX, actors[i].absY) THEN
+        TownHome(n, tx, ty);
+        actors[i].absX := tx;
+        actors[i].absY := ty;
+        actors[i].state := StStill;
+        actors[i].visible := TRUE
+      END;
       dx := heroX - actors[i].absX;
       dy := heroY - actors[i].absY;
       IF dx < 0 THEN dx := -dx END;
