@@ -2102,6 +2102,13 @@ BEGIN
     RETURN
   END;
   IF input.attack AND (swanCooldown = 0) THEN
+    IF input.dirKey # DirNone THEN
+      IF actors[0].environ = -3 THEN
+        actors[0].facing := BAND(CARDINAL(input.dirKey + 4), 7)
+      ELSE
+        actors[0].facing := input.dirKey
+      END
+    END;
     IF (actors[0].weapon >= 4) AND (actors[0].state # StShoot1) THEN
       IF (actors[0].weapon = 4) AND
          (brothers[activeBrother].stuff[8] <= 0) THEN
